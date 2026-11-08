@@ -158,7 +158,7 @@ function Brief3({ f }: { f: Filing }) {
   else if (e?.kind === 'results') {
     const r = resultsRead(e.data), fl = profitFlags(e.data).map(x => x.text)
     next = fl.some(t => t.startsWith('Exceptional')) ? 'Read the note on exceptional items in the filing, then check the call for whether they recur.'
-      : fl.some(t => t.startsWith('Other income')) ? 'Check how much of profit is treasury income versus operations, and how long the cash pile lasts at the current burn.'
+      : fl.some(t => t.startsWith('Other income')) ? 'Check how much of profit is treasury income versus operations, and whether core operations alone are profitable.'
       : fl.some(t => t.startsWith('Operating loss')) ? 'Check the call for the path to operating break-even and the cash runway.'
       : r.next
   }

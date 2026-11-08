@@ -6,7 +6,7 @@ export const maxDuration = 120
 const cache = memoryCache()
 export async function POST(req: Request) {
   const { ticker, question } = await req.json() as { ticker: string; question: string }
-  if (!question?.trim() || question.length > 400) return Response.json({ error: 'Ask a question of up to 400 characters.' }, { status: 400 })
+  if (!question?.trim() || question.length > 1500) return Response.json({ error: 'Ask a question of up to 1,500 characters.' }, { status: 400 })
   if (!hasKey()) return Response.json({ error: 'GEMINI_API_KEY is not set on the server.' }, { status: 503 })
   const t = ticker.toUpperCase().replace(/[^A-Z0-9&-]/g, '')
   try {

@@ -1,5 +1,6 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { runChecks, fmtMetric, type Metric, type Thesis } from '@/lib/thesis'
 import Link from 'next/link'
 import type { Filing, Holding, PriceBook } from '@/lib/types'
 import { movesInWindow, lastRegular, type Move } from '@/lib/alerts'
@@ -13,7 +14,14 @@ const WINDOWS: { id: string; label: string; ms: number }[] = [
   { id: '7d', label: '7 days', ms: 7 * 864e5 }, { id: '30d', label: '30 days', ms: 30 * 864e5 },
 ]
 
-export function Brief({ filings, prices, holdings, updatedAt, now }: { filings: Filing[]; prices: PriceBook; holdings: Holding[]; updatedAt: string; now: number }) {
+export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { filings: Filing[]; prices: PriceBook; holdings: Holding[]; updatedAt: string; now: number; metrics: Record<string, Record<string, Metric>> }) {
+  const [theses, setTheses] = useState<Record<string, Thesis>>({})
+  useEffect(() => {
+    const o: Record<string, Thesis> = {}
+    for (const h of holdings) { try { const t = JSON.parse(localStorage.getItem(`finn.thesis.${h.ticker}`) || 'null'); if (t) o[h.ticker] = t } catch { /* ignore */ } }
+    setTheses(o)
+  }, [holdings])
+  const thesisAlerts = Object.entries(theses).flatMap(([t, th]) => runChecks(th, metrics[t] || {}).filter(r => r.status === 'breached').map(r => ({ t, r })))
   const [win, setWin] = useWindow()
   const [th] = useThresholds()
   const [done, setDone] = useDone()
@@ -90,6 +98,20 @@ export function Brief({ filings, prices, holdings, updatedAt, now }: { filings: 
           ))}
         </div>
       </section>
+
+      {thesisAlerts.length > 0 && (
+        <section className="mt-9" aria-label="Thesis checks">
+          <SectionTitle title="Your theses" sub="Conditions you set that the latest reported numbers break" />
+          <ul className="sheet divide-y divide-rule rounded-2xl">
+            {thesisAlerts.map(({ t, r }) => (
+              <li key={t + r.key}><Link href={`/c/${t}#thesis`} className="flex items-center justify-between gap-3 px-4 py-3">
+                <span className="min-w-0"><span className="text-[14px] font-semibold">{t}</span><span className="block text-[12px] leading-snug text-ink-2">{r.metric.label} is {fmtMetric(r.metric.value, r.metric.unit)}; your limit is {r.op === '>=' ? 'at least' : 'at most'} {fmtMetric(r.value, r.metric.unit)}</span></span>
+                <span className="shrink-0 text-[12px] font-semibold text-down">Breached</span>
+              </Link></li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {view.insights.length > 0 && (
         <section className="mt-9" aria-label="Across your portfolio">

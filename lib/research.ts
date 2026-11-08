@@ -170,11 +170,26 @@ export async function askDossier(d: Dossier, question: string, o: { ledger?: Led
     try { const pages = await readPdf(t.url, 20_000_000); return { i, t, pages, text: pages.map((p, k) => `[[doc ${i} page ${k + 1}]]\n${p.slice(0, 6000)}`).join('\n') } } catch { return null }
   }))
   const ok = texts.filter(Boolean) as { i: number; t: { label: string; url: string }; pages: string[]; text: string }[]
+  // Route to the annual report only when the question is about things it covers better than calls do.
+  const AR_TOPICS = /risk|working capital|receivable|inventor|debt|borrow|leverage|segment|related part|contingent|auditor|capex|subsidiar|cash flow|cash conversion|thesis|bull|bear|governance|promoter|pledge/i
+  const ar = d.facts.docs.annualReports[0]
+  if (ar && AR_TOPICS.test(question)) {
+    try {
+      const pages = await readPdf(ar.url, 60_000_000)
+      const terms = question.toLowerCase().match(/[a-z]{5,}/g) || []
+      const kw: [RegExp, number][] = [
+        ...terms.slice(0, 12).map(t => [new RegExp(t.slice(0, 7), 'i'), 1] as [RegExp, number]),
+        [/risk|contingent liabilit|related part|key audit matter|working capital|borrowing|segment/i, 2],
+      ]
+      const idx = pickPages(pages, kw, 8, 3)
+      if (idx.length) ok.push({ i: ok.length, t: { label: ar.label, url: ar.url }, pages, text: idx.map(k => `[[doc ${ok.length} page ${k + 1}]]\n${pages[k].slice(0, 5000)}`).join('\n') })
+    } catch { /* answer from transcripts alone */ }
+  }
   const r = await callLLM({
     tier: 'reason', stage: 'research.ask', ledger: o.ledger, cache: o.cache, maxOutputTokens: 1500, temperature: 0.2,
     schema: S.obj({ answer: S.str('≤110 words, direct, numbers first'), sources: S.arr(S.obj({ doc: S.int(), page: S.int() })), confidence: S.enum(['high', 'medium', 'low']) }),
-    system: 'Answer an investor’s question about one company using ONLY the material provided: earnings-call transcripts (cite doc and page), extracted guidance, and reported numbers. Prefer management’s own explanation from the transcripts, and say where the numbers agree or not. If the material does not answer it, say exactly what is missing. No outside knowledge, no news. Never write citations inside the answer text; put them only in sources.',
-    prompt: `QUESTION: ${question}\n\nTRANSCRIPTS:\n${ok.map(x => `doc ${x.i} = ${x.t.label}\n${x.text}`).join('\n\n')}\n\nGUIDANCE: ${JSON.stringify((n.guidance || []).map(({ url, quote, ...g }: any) => g))}\nFACTS: ${JSON.stringify({ quarterly: d.facts.quarterly, trajectory: d.facts.trajectory, cash: d.facts.cash, balance: d.facts.balance, flags: d.facts.flags })}`,
+    system: 'Answer an investor’s question about one company using ONLY the material provided: earnings-call transcripts and, when included, annual-report pages (cite doc and page), extracted guidance, and reported numbers. Prefer management’s own explanation from the transcripts, and say where the numbers agree or not. If the material does not answer it, say exactly what is missing. No outside knowledge, no news. Never write citations inside the answer text; put them only in sources.',
+    prompt: `QUESTION: ${question}\n\nDOCUMENTS:\n${ok.map(x => `doc ${x.i} = ${x.t.label}\n${x.text}`).join('\n\n')}\n\nGUIDANCE: ${JSON.stringify((n.guidance || []).map(({ url, quote, ...g }: any) => g))}\nFACTS: ${JSON.stringify({ quarterly: d.facts.quarterly, trajectory: d.facts.trajectory, cash: d.facts.cash, balance: d.facts.balance, flags: d.facts.flags })}`,
   })
   const data = r.data || {}
   const sources = (data.sources || []).map((s: any) => ok.find(x => x.i === s.doc) ? { label: `${ok.find(x => x.i === s.doc)!.t.label}, p.${s.page}`, url: `${ok.find(x => x.i === s.doc)!.t.url}#page=${s.page}` } : null).filter(Boolean)

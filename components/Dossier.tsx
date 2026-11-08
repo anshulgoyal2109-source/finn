@@ -5,6 +5,7 @@ import type { Dossier as D, Filing, GuidanceItem, Verdict } from '@/lib/types'
 import { Spark, Columns, PairColumns } from './charts'
 import { GlanceRow, Pill } from './cards'
 import { inr, pct, ago } from '@/lib/format'
+import { ThesisPanel } from './ThesisPanel'
 
 type Live = D & { prices?: { d: string; c: number }[] }
 const STATUS: Record<Verdict['status'], { label: string; glyph: string; cls: string }> = {
@@ -20,6 +21,7 @@ export function Dossier({ ticker, initial, filings, prices, holding }: { ticker:
   const [err, setErr] = useState<string | null>(null)
   const [stage, setStage] = useState<string | null>(null)
   const [livePrices, setLivePrices] = useState(prices)
+  const [askQ, setAskQ] = useState<{ q: string; n: number } | null>(null)
 
   useEffect(() => {
     try { const r = JSON.parse(localStorage.getItem('finn.recent') || '[]').filter((x: string) => x !== ticker); localStorage.setItem('finn.recent', JSON.stringify([ticker, ...r].slice(0, 8))) } catch { /* ignore */ }
@@ -73,8 +75,10 @@ export function Dossier({ ticker, initial, filings, prices, holding }: { ticker:
         {px.length > 10 && <Spark values={px} w={428} h={44} className="mt-3 h-11 w-full" />}
       </header>
 
+      <ThesisPanel ticker={ticker} facts={f} onAsk={q => setAskQ({ q, n: Date.now() })} />
+
       <nav className="scroll-x sticky top-0 z-30 -mx-4 mt-4 flex gap-1 bg-paper/95 px-4 py-2 backdrop-blur" aria-label="Sections">
-        {[['scorecard', 'Promised vs delivered'], ['numbers', 'Numbers'], ['cash', 'Cash & balance sheet'], ['business', 'Business'], ['case', 'Bull & bear'], ['filings', 'Filings']].map(([id, l]) => (
+        {[['thesis', 'Your thesis'], ['scorecard', 'Promised vs delivered'], ['numbers', 'Numbers'], ['cash', 'Cash & balance sheet'], ['business', 'Business'], ['case', 'Bull & bear'], ['filings', 'Filings']].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="whitespace-nowrap rounded-full border hair bg-sheet px-3 py-1 text-[12px] text-ink-2">{l}</a>
         ))}
       </nav>
@@ -210,7 +214,7 @@ export function Dossier({ ticker, initial, filings, prices, holding }: { ticker:
         {d.ledger.length > 0 && <p className="mt-1">Built {ago(d.generatedAt)} with {d.ledger.map(l => `${l.calls + l.cached} × ${l.model}`).join(', ')} · {Math.round(d.ledger.reduce((a, l) => a + l.inTok + l.outTok, 0) / 1000)}k tokens.</p>}
       </footer>
 
-      <Ask ticker={ticker} ready={!!n} />
+      <Ask ticker={ticker} ready={!!n} trigger={askQ} />
     </div>
   )
 }
@@ -266,7 +270,7 @@ function Cites({ ids, g, quotes }: { ids: string[]; g: Map<string, any>; quotes?
   )
 }
 
-function Ask({ ticker, ready }: { ticker: string; ready: boolean }) {
+function Ask({ ticker, ready, trigger }: { ticker: string; ready: boolean; trigger: { q: string; n: number } | null }) {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [a, setA] = useState<{ q: string; answer?: string; error?: string; confidence?: string; sources?: { label: string; url: string }[] } | null>(null)
@@ -278,13 +282,14 @@ function Ask({ ticker, ready }: { ticker: string; ready: boolean }) {
     const j = await r.json(); setBusy(false)
     setA({ q: question, ...(r.ok ? j : { error: j.error }) }); setQ('')
   }
-  const sugg = ['What did they guide for margins?', 'Why did growth slow?', 'Is debt rising?']
+  useEffect(() => { if (trigger && ready) ask(trigger.q) }, [trigger]) // eslint-disable-line react-hooks/exhaustive-deps
+  const sugg = ['Why are margins moving?', 'What are the biggest risks?', 'Is profit turning into cash?', 'What contradicts the bull case?', 'What changed in working capital?']
   return (
     <div className="fixed inset-x-0 bottom-[64px] z-30 px-3 pb-2">
       <div className="mx-auto max-w-[440px]">
         {a && (
           <div className="sheet mb-2 max-h-[45vh] overflow-y-auto rounded-2xl p-4 shadow-[0_8px_30px_rgba(26,34,48,.12)]">
-            <div className="flex justify-between gap-3"><p className="text-[12px] text-mute">{a.q}</p><button onClick={() => setA(null)} className="text-[12px] text-mute" aria-label="Close answer">Close</button></div>
+            <div className="flex justify-between gap-3"><p className="line-clamp-2 text-[12px] text-mute">{a.q}</p><button onClick={() => setA(null)} className="text-[12px] text-mute" aria-label="Close answer">Close</button></div>
             {busy ? <p className="mt-2 text-[14px] text-ink-2">Reading the two latest call transcripts…</p> : a.error ? <p className="mt-2 text-[14px] text-down">{a.error}</p> : (
               <><p className="mt-1.5 whitespace-pre-line text-[14px] leading-relaxed">{a.answer}</p>
                 <p className="mt-1.5 flex flex-wrap gap-x-3 text-[12px]">{a.sources?.slice(0, 4).map(s => <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="text-signal">{s.label}</a>)}</p>
