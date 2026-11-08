@@ -2,9 +2,18 @@
 
 A mobile-first investment agent for an Indian equity portfolio. FINN reads every exchange filing, every results PDF and every earnings-call transcript, so the investor only reads what matters.
 
-- **Push (Today):** "FINN read 258 filings. 39 need you." Material filings arrive as cards: results become a Revenue / EBITDA / PBT / PAT table versus last quarter and last year, read from the filing itself and cross-checked. Leadership changes show who is coming in and where they came from. M&A, fund raises and legal items get a two-line note. Routine filings are collapsed into groups ("ESOP allotments ×12"). Unusual moves follow the investor's own thresholds.
-- **Pull (Research):** for any NSE company, a dossier led by **promised vs delivered**. Every guidance statement from the last four calls is checked against the reported numbers, and each one links to the exact transcript page. Then story vs numbers, cash quality, balance sheet, business mix, bull and bear, and an Ask box grounded in the transcripts.
-- **Watch:** you decide what "unusual" means (volume × 20-day average, ±% move, which filing types). The app applies it instantly, and the GitHub Action pushes to your phone via ntfy.
+- **Push (Today):** "38 things need you". The first thing you see is the sieve: one tick per filing, so you can see how much was filtered out. Below it:
+  - **Your theses:** any condition you set that the latest numbers break.
+  - **Across your portfolio:** patterns computed across holdings, e.g. "7 of 14 reporters saw margins contract ≥100 bps".
+  - **Needs you:** compact cards you can expand. Each one answers *what happened / why it matters / check next*.
+  - **Unusual moves:** each tile labelled filing-linked / sector / market-wide / unexplained.
+  - **Worth a glance:** the shorter list, using the exchange's own one-line summaries.
+  - **Routine:** collapsed into groups ("ESOP allotments ×12").
+- **Results analyser:** Revenue / EBITDA / PBT / PAT against last quarter and last year, read from the results PDF and cross-checked against the standardised table. Also EBITDA margin change in basis points, revenue vs profit growth, exceptional items (derived from two reported lines, never from the model's sign), one-offs in the comparison quarter, and other income as a share of PBT.
+- **Pull (Research, any NSE ticker):** the dossier leads with **promised vs delivered**. Every guidance statement from the last four calls is graded against reported numbers and links to its verbatim quote and transcript page. Each verdict carries an evidence-based confidence. After that: story vs numbers, numbers and trajectory, cash quality, balance sheet, segment mix from the annual report, bull/bear, and what to check next quarter.
+- **Thesis tracker:** write why you own a stock and which numbers would prove you wrong. FINN checks those conditions against reported figures (no model involved), flags breaches on Today, and can "challenge my thesis" with the evidence.
+- **Ask:** answers grounded in the latest transcripts. It routes to annual-report pages only for questions they cover better (risks, working capital, debt, segments, related parties), and cites document and page.
+- **Watch:** you set what "unusual" means (±% move, × 20-day volume, filing types, per-stock mute). A 30-session alert history explains every alert (trigger, move vs your portfolio, likeliest cause) and lets you record the outcome. Optional phone push via ntfy.
 
 ## Point of view on interaction
 
@@ -42,7 +51,7 @@ One TypeScript codebase: the Action and the live API share the same parsers (`li
 | Promised vs delivered, bull/bear | **Flash**, low thinking, sees only extracted claims + computed numbers |
 | All arithmetic, thresholds, flags | Plain code (`lib/analytics.ts`, `lib/alerts.ts`) |
 
-**Guards.** Every quote the model returns is string-matched against the PDF page it cites (the page is auto-corrected when the model uses the printed page number). Unmatched quotes are dropped, and every verdict must cite a surviving quote id. In testing the results cross-check caught an OCR column shift on HDFC Bank's scanned filing. FINN showed the standardised figures instead of wrong ones.
+**Guards.** Every structured model response is validated against its schema at runtime and retried on failure. Every quote the model returns is string-matched against the PDF page it cites (the page is auto-corrected when the model uses the printed page number). Unmatched quotes are dropped, and every verdict must cite a surviving quote id. In testing the results cross-check caught an OCR column shift on HDFC Bank's scanned filing. FINN showed the standardised figures instead of wrong ones.
 
 **Cost.** Each tier is a fallback chain with a circuit breaker (an overloaded model costs seconds, not the answer). Every call is content-addressed and cached. Backfilling 75 days across 18 holdings (537 filings, 58 enrichments) cost **$0.022 at paid-tier prices**; 22 research dossiers about **$0.17**; a live dossier for a new company ~16–20 s and ~$0.01. Actually paid: $0 (Gemini free tier). The `/engine` page shows the live ledger.
 
@@ -61,7 +70,16 @@ npm run dev                                      # http://localhost:3000
 
 Portfolio and defaults live in `config/portfolio.json`.
 
+## Known limitations
+
+- Theses, alert outcomes and mutes are stored on the device (no accounts). Phone push uses the repo's default rules, not each user's sliders.
+- The screener feed shows 5 recent filings per company; the BSE full feed fills the gap when it answers (it has from GitHub's runners so far).
+- Free-tier rate limits mean a daily run refreshes a handful of dossiers at a time; the rest keep their previous version, and the date is shown.
+- Scanned results PDFs fall back to standardised figures (labelled). Companies without published call transcripts get no promised-vs-delivered section, and the dossier says so.
+
 ## Deliberately left out
+
+- **Portfolio "ripple effects".** With 18 largely unrelated holdings, almost every cross-company link would be inferred rather than evidenced in a filing. FINN does not present relationships it can't source.
 
 - **Accounts and server-side user state.** Preferences live on the device, which is enough to prove the interaction model.
 - **Native push via Web Push.** ntfy gives real phone notifications with zero infrastructure. Web Push would need a subscription store.

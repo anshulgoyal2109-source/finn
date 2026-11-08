@@ -24,10 +24,19 @@
 5. **One codebase.** The Action and the live API share parsers, router and research engine (TypeScript), so the push and pull sides can't drift apart.
 6. **Primary sources on the pull side, honestly labelled on the push side.** For an incoming executive's background, FINN tries the SEBI-mandated profile in the filing, then an earlier filing that names the person, then Wikipedia. Model knowledge is used only as a last resort, and the card says so. Google Search grounding is wired in behind a flag but has no free-tier quota, so it's off.
 
-**Deliberately left out.** Accounts (preferences live on the device), Web Push (phone alerts go through ntfy, which needs no infrastructure), news and broker notes (excluded by the brief, and by design), intraday data.
+**Added after the first cut** (each built only where it changes a decision):
+- *What / why / check next* on every material card.
+- A computed "Across your portfolio" block.
+- Results quality flags: margin change in basis points, exceptional items derived from two reported lines (the model got Sun Pharma's sign wrong, so FINN no longer asks it for the sign), and other income as a share of profit (Eternal: 109% of PBT).
+- A **thesis tracker** whose conditions are checked arithmetically against reported numbers and surface on Today when breached.
+- Ask routed to annual-report pages for risk, working-capital and debt questions.
+- A Watch history that explains every alert as filing-linked, sector, market-wide or unexplained.
+- Runtime schema validation with retry on every structured model call, and evidence-based confidence on each verdict.
+- I also removed promised-vs-delivered rows that graded commentary rather than real guidance (CDSL went from 5 rows to 0). Fewer, true rows beat more, softer ones.
+
+**Deliberately left out.** Portfolio "ripple effects": with unrelated holdings, almost every link would be inferred, and FINN doesn't present relationships it can't source. Accounts (preferences live on the device), Web Push (phone alerts go through ntfy, which needs no infrastructure), news and broker notes (excluded by the brief, and by design), intraday data.
 
 **Where I'd take it next.**
-- A per-holding "thesis" note that FINN checks every result against, so it can say "this breaks what you believed".
 - Guidance drift tracked across years, not just four calls.
 - Peer-relative scorecards (does management miss more than peers in a bad quarter?).
 - Concall audio for tone.
