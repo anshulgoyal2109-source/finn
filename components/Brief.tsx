@@ -26,21 +26,20 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics, even
     setTheses(o)
   }, [holdings])
   const thesisAlerts = Object.entries(theses).flatMap(([t, th]) => runChecks(th, metrics[t] || {}).filter(r => r.status === 'breached').map(r => ({ t, r })))
-  const [win, setWinRaw, winReady] = useWindow()
-  const [chosen, setChosen] = useState(true)
-  useEffect(() => { try { setChosen(!!localStorage.getItem('finn.window')) } catch { /* ignore */ } }, [])
-  const quiet24 = !filings.some(f => f.tier === 'act' && now - +new Date(f.ts) < 864e5)
-  const setWin = (x: string) => { setChosen(true); setWinRaw(x) }
-  void winReady
+  const [win, setWin] = useWindow()
+  // custom period: [from, to] as yyyy-mm-dd, inclusive
+  const [custom, setCustom] = useState<{ from: string; to: string }>(() => ({ from: new Date(now - 14 * 864e5).toISOString().slice(0, 10), to: new Date(now).toISOString().slice(0, 10) }))
   const [th] = useThresholds()
   const [done, setDone] = useDone()
   const [showDone, setShowDone] = useState(false)
-  const w = WINDOWS.find(x => x.id === (!chosen && quiet24 ? '7d' : win)) || WINDOWS[0]
-  const since = new Date(now - w.ms).toISOString()
+  const isCustom = win === 'custom'
+  const w = isCustom ? { id: 'custom', label: 'chosen period', ms: 0 } : WINDOWS.find(x => x.id === win) || WINDOWS[0]
+  const since = isCustom ? new Date(custom.from + 'T00:00:00+05:30').toISOString() : new Date(now - w.ms).toISOString()
+  const until = isCustom ? new Date(custom.to + 'T23:59:59+05:30').toISOString() : new Date(now + 864e5).toISOString()
   const name = (t: string) => holdings.find(h => h.ticker === t)?.name || t
 
   const view = useMemo(() => {
-    const inWin = filings.filter(f => f.ts >= since)
+    const inWin = filings.filter(f => f.ts >= since && f.ts <= until)
     // A category you don't watch can still reach you, but only if it scores very high.
     const act = inWin.filter(f => f.tier === 'act' && (th.categories.includes(f.category) || f.score >= 85)).sort((a, b) => b.score - a.score || b.ts.localeCompare(a.ts))
     const glance = inWin.filter(f => f.tier === 'glance' || (f.tier === 'act' && !act.includes(f))).sort((a, b) => b.ts.localeCompare(a.ts))
@@ -48,11 +47,11 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics, even
     const groups = new Map<string, Filing[]>()
     for (const f of routine) { const g = routineGroup(f.category, f.headline); groups.set(g, [...(groups.get(g) || []), f]) }
     // one row per stock (its latest crossing in the window), most recent first
-    const hist = alertHistory(holdings, prices, th, filings, 30).filter(a => a.date >= since.slice(0, 10))
+    const hist = alertHistory(holdings, prices, th, filings, 30).filter(a => a.date >= since.slice(0, 10) && a.date <= until.slice(0, 10))
     const moves: AlertEvent[] = holdings.map(h => hist.find(a => a.ticker === h.ticker)).filter((x): x is AlertEvent => !!x).sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.changePct) - Math.abs(a.changePct))
     const lastSession = holdings.filter(h => !(th.muted || []).includes(h.ticker)).map(h => lastRegular(h.ticker, prices[h.ticker], th)).filter(m => m && m.reasons.length) as Move[]
     return { inWin, act, glance, routine, groups: [...groups.entries()].sort((a, b) => b[1].length - a[1].length), moves, lastSession, insights: portfolioInsights(inWin.filter(f => f.tier === 'act'), moves) }
-  }, [filings, since, th, holdings, prices])
+  }, [filings, since, until, th, holdings, prices])
 
   const open = view.act.filter(f => !done.includes(f.id))
   const handled = view.act.filter(f => done.includes(f.id))
@@ -91,7 +90,7 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics, even
           <p className="text-[15px] font-semibold leading-snug">FINN reads every exchange filing for your portfolio and shows only what needs you.</p>
           <p className="mt-1.5 text-[13px] leading-snug text-paper/75">This demo follows a mock portfolio of 18 real NSE companies. The filings, prices and transcripts are real and refresh hourly on market days.</p>
           <ol className="mt-3 space-y-1.5 text-[13px] leading-snug">
-            <li><span className="text-paper/60">1.</span> Tap a results card below: numbers read from the filing, cross-checked.</li>
+            <li><span className="text-paper/60">1.</span> Switch to <button onClick={() => { setWin('7d'); closeIntro() }} className="underline underline-offset-2">7 days</button> and tap a results card: numbers read from the filing, cross-checked.</li>
             <li><span className="text-paper/60">2.</span> Open <Link href="/c/ASIANPAINT" className="underline underline-offset-2">Asian Paints</Link>: what management promised vs what it delivered, each line linked to the transcript page.</li>
             <li><span className="text-paper/60">3.</span> In Research, try any NSE company. FINN reads it live in about 20 seconds.</li>
           </ol>
@@ -105,7 +104,7 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics, even
           {needYou ? <><span className="text-signal">{needYou}</span> {needYou === 1 ? 'thing needs' : 'things need'} you</> : 'You’re all caught up'}
         </h1>
         <p className="mt-2 text-[15px] leading-snug text-ink-2">
-          FINN read {view.inWin.length} filings from your {holdings.length} holdings in the last {w.label}
+          FINN read {view.inWin.length} {view.inWin.length === 1 ? 'filing' : 'filings'} from your {holdings.length} holdings {isCustom ? `from ${new Date(custom.from).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} to ${new Date(custom.to).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : `in the last ${w.label}`}
           {view.lastSession.length > 0 ? `. ${view.lastSession.length === 1 ? 'One stock' : `${view.lastSession.length} stocks`} moved unusually in the last session.` : '.'}
         </p>
         <Sieve items={view.inWin} done={done} />
@@ -114,12 +113,19 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics, even
           <span><i className="mr-1 inline-block h-2 w-2 rounded-sm bg-ink-2/55 align-middle" />{view.glance.length} worth a glance</span>
           <span><i className="mr-1 inline-block h-2 w-2 rounded-sm bg-rule align-middle" />{view.routine.length} routine</span>
         </p>
-        <div className="mt-5 grid grid-cols-4 rounded-xl bg-wash p-1" role="tablist" aria-label="Time window">
-          {WINDOWS.map(x => (
+        <div className="mt-5 grid grid-cols-5 rounded-xl bg-wash p-1" role="tablist" aria-label="Time window">
+          {[...WINDOWS, { id: 'custom', label: 'Custom', ms: 0 }].map(x => (
             <button key={x.id} role="tab" aria-selected={x.id === w.id} onClick={() => setWin(x.id)}
-              className={`rounded-lg py-1.5 text-[13px] ${x.id === w.id ? 'bg-sheet font-semibold text-ink shadow-[0_1px_2px_rgba(26,34,48,.08)]' : 'text-ink-2'}`}>{x.label}</button>
+              className={`rounded-lg py-1.5 text-[12.5px] ${x.id === w.id ? 'bg-sheet font-semibold text-ink shadow-[0_1px_2px_rgba(26,34,48,.08)]' : 'text-ink-2'}`}>{x.id === '24h' ? '24h' : x.label.replace(' days', 'd')}</button>
           ))}
         </div>
+        {isCustom && (
+          <div className="mt-2 flex items-center gap-2 text-[13px]">
+            <label className="flex-1"><span className="sr-only">From</span><input type="date" value={custom.from} max={custom.to} onChange={e => setCustom({ ...custom, from: e.target.value })} className="w-full rounded-lg border hair bg-sheet px-2 py-1.5" /></label>
+            <span className="text-mute">to</span>
+            <label className="flex-1"><span className="sr-only">To</span><input type="date" value={custom.to} min={custom.from} onChange={e => setCustom({ ...custom, to: e.target.value })} className="w-full rounded-lg border hair bg-sheet px-2 py-1.5" /></label>
+          </div>
+        )}
       </section>
 
       {thesisAlerts.length > 0 && (
@@ -172,9 +178,9 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics, even
         <SectionTitle title="Needs you" sub={open.length ? 'Highest stakes first. Tap a card for details, ✓ when handled.' : undefined} />
         {open.length === 0 ? (
           <div className="sheet rounded-2xl px-4 py-7 text-center">
-            <p className="text-[15px] font-semibold">{view.act.length ? 'Nothing material left to look at.' : `No material filings in the last ${w.label}.`}</p>
+            <p className="text-[15px] font-semibold">{view.act.length ? 'Nothing material left to look at.' : isCustom ? 'No material filings in this period.' : `No material filings in the last ${w.label}.`}</p>
             <p className="mt-1 text-[13px] text-mute">
-              {w.id !== '30d' ? <button className="text-signal" onClick={() => setWin(w.id === '24h' ? '7d' : '30d')}>Look back {w.id === '24h' ? '7 days' : '30 days'}</button> : 'FINN checks for new filings every hour on market days.'}
+              {w.id !== '30d' && !isCustom ? <button className="text-signal" onClick={() => setWin(w.id === '24h' ? '7d' : '30d')}>Look back {w.id === '24h' ? '7 days' : '30 days'}</button> : 'FINN checks for new filings every hour on market days.'}
             </p>
           </div>
         ) : (

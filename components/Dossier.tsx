@@ -79,7 +79,7 @@ export function Dossier({ ticker, initial, filings, prices, holding }: { ticker:
       <ThesisPanel ticker={ticker} facts={f} onAsk={q => setAskQ({ q, n: Date.now() })} />
 
       <nav className="scroll-x sticky top-0 z-30 -mx-4 mt-4 flex gap-1 bg-paper/95 px-4 py-2 backdrop-blur" aria-label="Sections">
-        {[['thesis', 'Your thesis'], ['scorecard', 'Promised vs delivered'], ['numbers', 'Numbers'], ['cash', 'Cash & balance sheet'], ['business', 'Business'], ['case', 'Bull & bear'], ['filings', 'Filings']].map(([id, l]) => (
+        {[['thesis', 'Your thesis'], ['scorecard', 'Promised vs delivered'], ['guidance', 'Guidance'], ['numbers', 'Numbers'], ['cash', 'Cash & balance sheet'], ['business', 'Business'], ['case', 'Bull & bear'], ['filings', 'Filings']].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="whitespace-nowrap rounded-full border hair bg-sheet px-3 py-1 text-[12px] text-ink-2">{l}</a>
         ))}
       </nav>
@@ -112,6 +112,22 @@ export function Dossier({ ticker, initial, filings, prices, holding }: { ticker:
           </>
         )}
       </section>
+
+      {/* Guidance: what management has explicitly guided, newest call first */}
+      {n?.guidance?.length > 0 && (
+        <section id="guidance" className="mt-9 scroll-mt-14">
+          <H2 title="What management has guided" sub="Explicit forward statements on headline numbers, newest call first. Each quote is verified against the transcript." />
+          <ul className="sheet divide-y divide-rule rounded-2xl">
+            {(n.guidance as GuidanceItem[]).slice(0, 10).map(g => (
+              <li key={g.id} className="px-4 py-3">
+                <p className="flex items-baseline justify-between gap-3"><span className="text-[14px] font-semibold">{g.metric.charAt(0).toUpperCase() + g.metric.slice(1)}</span><span className="shrink-0 text-[11px] text-mute">for {g.horizon}</span></p>
+                <p className="mt-0.5 text-[13px] leading-snug text-ink-2">{g.statement}</p>
+                <a href={`${g.url}#page=${g.page}`} target="_blank" rel="noreferrer" className="mt-1 block text-[12px] text-signal">{g.call} call, p.{g.page}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Numbers */}
       <section id="numbers" className="mt-9 scroll-mt-14">
@@ -254,7 +270,7 @@ function VerdictRow({ v, g }: { v: Verdict; g: Map<string, any> }) {
       <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-start gap-3 p-3.5 text-left">
         <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold ${s.cls}`} aria-label={s.label}>{s.glyph}</span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-baseline justify-between gap-2"><span className="text-[14px] font-semibold leading-snug">{v.metric}</span><span className={`shrink-0 text-[11px] ${conf.level === 'High' ? 'text-up' : conf.level === 'Medium' ? 'text-ink-2' : 'text-warn'}`}>{conf.level} confidence</span></span>
+          <span className="flex items-baseline justify-between gap-2"><span className="text-[14px] font-semibold leading-snug">{v.metric.charAt(0).toUpperCase() + v.metric.slice(1)}</span><span className={`shrink-0 text-[11px] ${conf.level === 'High' ? 'text-up' : conf.level === 'Medium' ? 'text-ink-2' : 'text-warn'}`}>{conf.level} confidence</span></span>
           <span className="mt-1 block text-[13px] leading-snug"><span className="text-mute">Promised </span>{v.promised}</span>
           <span className="mt-0.5 block text-[13px] leading-snug"><span className="text-mute">Delivered </span>{v.delivered}</span>
         </span>
