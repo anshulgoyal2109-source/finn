@@ -31,24 +31,52 @@ function MetricLine({ label, r, hint }: { label: string; r: MetricRow; hint?: st
   )
 }
 
+/** Quality-of-profit checks — plain arithmetic on the extracted lines. */
+export function profitFlags(r: ResultsCut): { text: string; tone: 'bad' | 'warn' | 'neutral' }[] {
+  const out: { text: string; tone: 'bad' | 'warn' | 'neutral' }[] = []
+  const ex = r.exceptional?.cur
+  if (ex != null && r.pbt.cur && Math.abs(ex) >= Math.abs(r.pbt.cur) * 0.03)
+    out.push({ text: `Exceptional items of ${ex < 0 ? '−' : '+'}₹${inr(Math.abs(Math.round(ex)))} cr this quarter (${Math.round(Math.abs(ex) / Math.abs(r.pbt.cur) * 100)}% of operating PBT). PAT includes them; PBT above is before them.`, tone: ex < 0 ? 'warn' : 'neutral' })
+  const oi = r.otherIncome?.cur
+  if (!r.lender && oi != null && r.pbt.cur && r.pbt.cur > 0 && oi / r.pbt.cur >= 0.25)
+    out.push({ text: `Other income is ${Math.round(oi / r.pbt.cur * 100)}% of PBT, so profit leans on non-operating income (treasury, one-offs).`, tone: 'warn' })
+  if (!r.lender && r.ebitda.cur != null && r.ebitda.cur < 0) out.push({ text: 'Operating loss at the EBITDA level this quarter.', tone: 'bad' })
+  return out
+}
+
 export function ResultsBody({ r }: { r: ResultsCut }) {
+  const mg = (k: 'cur' | 'prev' | 'yoy') => r.revenue[k] && r.ebitda[k] != null ? (r.ebitda[k]! / r.revenue[k]!) * 100 : null
+  const bps = (a: number | null, b: number | null) => a == null || b == null ? null : Math.round((a - b) * 100)
+  const read = resultsRead(r)
+  const flags = profitFlags(r)
   return (
     <div className="mt-3">
-      <table className="w-full">
+      {read.why && <p className="text-[14px] leading-snug text-ink">{read.why}</p>}
+      <table className="mt-3 w-full">
         <caption className="sr-only">Headline numbers</caption>
         <thead><tr className="text-[11px] text-mute"><th className="text-left font-normal">{r.period} · {r.unit}</th><th /><th className="pl-3 text-right font-normal">vs last qtr</th><th className="pl-3 text-right font-normal">vs year ago</th></tr></thead>
         <tbody>
           <MetricLine label="Revenue" r={r.revenue} />
           <MetricLine label={r.lender ? 'Net interest income' : 'EBITDA'} hint={r.lender ? 'Lenders: interest earned − expended' : undefined} r={r.ebitda} />
+          {!r.lender && (() => { const c = mg('cur'), q = bps(c, mg('prev')), y = bps(c, mg('yoy')); return (
+            <tr className="border-t hair">
+              <th scope="row" className="py-2 pr-2 text-left text-[13px] font-normal text-ink-2">EBITDA margin</th>
+              <td className="num py-2 text-right text-[15px] font-semibold">{c == null ? '—' : `${c.toFixed(1)}%`}</td>
+              <td className={`num py-2 pl-3 text-right text-[13px] font-medium ${tone(q)}`}>{q == null ? '—' : `${q > 0 ? '+' : q < 0 ? '−' : ''}${Math.abs(q)} bps`}</td>
+              <td className={`num py-2 pl-3 text-right text-[13px] font-medium ${tone(y)}`}>{y == null ? '—' : `${y > 0 ? '+' : y < 0 ? '−' : ''}${Math.abs(y)} bps`}</td>
+            </tr>) })()}
           <MetricLine label="Profit before tax" r={r.pbt} />
           <MetricLine label="Profit after tax" r={r.pat} />
         </tbody>
       </table>
+      {flags.length > 0 && (
+        <ul className="mt-3 space-y-1.5">{flags.map((x, i) => <li key={i} className={`rounded-lg px-3 py-2 text-[13px] leading-snug ${x.tone === 'bad' ? 'bg-down-wash text-down' : x.tone === 'warn' ? 'bg-warn-wash text-warn' : 'bg-wash text-ink-2'}`}>{x.text}</li>)}</ul>
+      )}
       <p className="mt-2 text-[11px] leading-snug text-mute">
         {r.source === 'filing'
-          ? <>Read from the results filing{r.pages?.length ? `, p. ${r.pages.join(', ')}` : ''}, {r.basis}. {r.verified === 'match' ? <span className="text-up">Matches the standardised table.</span> : r.note}</>
+          ? <>Read from the results filing{r.pages?.length ? `, p. ${r.pages.join(', ')}` : ''}, {r.basis}. {r.verified === 'match' ? <span className="text-up">Revenue and PAT match the standardised table.</span> : r.note}</>
           : <>{r.note || `Standardised ${r.basis} figures (filing not machine-readable).`}</>}
-        {!r.lender && ' EBITDA = PBT + finance costs + D&A − other income.'}
+        {!r.lender && ' EBITDA = PBT + finance costs + D&A − other income. Growth and margins computed by FINN, not the model.'}
       </p>
     </div>
   )
@@ -122,7 +150,7 @@ function Brief3({ f }: { f: Filing }) {
   const e = f.enrichment
   let what = '', why = '', next = ''
   if (e?.kind === 'oneliner') { const [a, ...b] = e.data.text.split(' — '); what = a; why = b.join(' — '); next = e.data.next || '' }
-  else if (e?.kind === 'results') { const r = resultsRead(e.data); why = r.why; next = r.next }
+  else if (e?.kind === 'results') { const r = resultsRead(e.data); next = profitFlags(e.data).some(x => x.tone !== 'neutral') ? 'Profit quality is mixed: check the notes to the results for what drove the one-offs, then the call for whether they recur.' : r.next }
   else if (e?.kind === 'people') {
     const top = e.data.people.some(p => /ceo|md|managing|chief|cfo|chair|whole/i.test(p.role))
     why = top ? 'A change at the top can reset strategy, capital allocation and guidance.' : 'Board-level change; usually low impact unless it signals a governance issue.'

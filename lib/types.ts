@@ -46,6 +46,7 @@ export interface ResultsCut {
   basis: 'consolidated' | 'standalone'
   unit: string                      // "₹ cr"
   revenue: MetricRow; ebitda: MetricRow; pbt: MetricRow; pat: MetricRow
+  otherIncome?: MetricRow; exceptional?: MetricRow   // drivers of 'quality of profit' flags
   lender: boolean                   // banks / NBFCs: EBITDA not meaningful
   source: 'filing' | 'screener'     // which document the numbers came from
   verified: 'match' | 'mismatch' | 'unchecked'

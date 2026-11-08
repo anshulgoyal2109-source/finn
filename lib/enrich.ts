@@ -22,6 +22,7 @@ const COL = S.obj({
   finance_costs: S.num('Finance costs (banks: interest expended)'),
   depreciation: S.num('Depreciation and amortisation'),
   pbt: S.num('Profit before exceptional items and tax if shown, else profit before tax'),
+  exceptional_items: S.num('Exceptional items line as printed (negative if a loss/expense), 0 if the statement has the line with no amount, null if there is no such line'),
   pat: S.num('Net profit for the period (total, before minority/non-controlling interest split)'),
 })
 const RESULT_SCHEMA = S.obj({
@@ -76,6 +77,7 @@ export async function resultsFirstCut(filingUrl: string, f: CompanyFundamentals 
           // Lenders don't report EBITDA; Net Interest Income (interest earned − expended) is the analogous core-earnings line.
           ebitda: lender ? row('', x => x.revenue == null || x.finance_costs == null ? null : x.revenue - x.finance_costs) : row('', ebitda),
           pbt: row('pbt'), pat: row('pat'),
+          otherIncome: row('other_income'), exceptional: row('exceptional_items'),
           source: 'filing', verified: 'unchecked', pages: idx.map(i => i + 1),
         }
         verify(cut, f)
@@ -115,7 +117,7 @@ export function fromScreener(f: CompanyFundamentals): ResultsCut | null {
   const ebitdaRow: MetricRow = f.lender
     ? { cur: sub(rev.cur, g(['Interest'], n - 1)), prev: sub(rev.prev, g(['Interest'], n - 2)), yoy: sub(rev.yoy, g(['Interest'], n - 5)) }
     : row(['Operating Profit'])
-  return { period: q.cols[n - 1], basis: f.basis, unit: '₹ cr', lender: f.lender, revenue: rev, ebitda: ebitdaRow, pbt: row(['Profit before tax']), pat: row(['Net Profit']), source: 'screener', verified: 'unchecked' }
+  return { period: q.cols[n - 1], basis: f.basis, unit: '₹ cr', lender: f.lender, revenue: rev, ebitda: ebitdaRow, pbt: row(['Profit before tax']), pat: row(['Net Profit']), otherIncome: row(['Other Income']), source: 'screener', verified: 'unchecked' }
 }
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 /** "September 30, 2026" | "30.09.2026" | "Q2 FY27" -> "Sep 2026" (screener's column label) */
