@@ -1,5 +1,7 @@
 # FINN — your portfolio, pre-read
 
+**Live:** https://finn-fawn-xi.vercel.app · **Demo video:** https://drive.google.com/file/d/1gkp6U2JtRNnlfE4b3ErDzTlsufC07qwH/view · **AI build history:** https://claude.ai/share/b1abccd2-46bd-42e7-b4da-eeecad735372
+
 A mobile-first investment agent for an Indian equity portfolio. FINN reads every exchange filing, every results PDF and every earnings-call transcript, so the investor only reads what matters.
 
 - **Push (Today):** "38 things need you". The first thing you see is the sieve: one tick per filing, so you can see how much was filtered out. Below it:
