@@ -38,7 +38,7 @@ export interface Filing {
 export type Enrichment =
   | { kind: 'results'; data: ResultsCut }
   | { kind: 'people'; data: PeopleChange }
-  | { kind: 'oneliner'; data: { text: string; model: string } }
+  | { kind: 'oneliner'; data: { text: string; model: string; next?: string } }
 
 export interface MetricRow { cur: number | null; prev: number | null; yoy: number | null }
 export interface ResultsCut {

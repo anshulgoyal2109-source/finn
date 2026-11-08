@@ -8,7 +8,7 @@ import { pct } from '@/lib/format'
 
 const WATCHABLE = ['results', 'mna', 'management_change', 'fund_raise', 'litigation', 'pledging', 'credit_rating', 'insider_trading', 'capex', 'press_release', 'dividend', 'bonus_split'] as const
 
-export function Watch({ holdings, prices }: { holdings: Holding[]; prices: PriceBook }) {
+export function Watch({ holdings, prices, pushTopic }: { holdings: Holding[]; prices: PriceBook; pushTopic?: string }) {
   const [t, setT] = useThresholds()
   const rows = holdings.map(h => ({ h, m: lastRegular(h.ticker, prices[h.ticker], t) })).filter(x => x.m)
     .sort((a, b) => (b.m!.reasons.length - a.m!.reasons.length) || Math.abs(b.m!.changePct) - Math.abs(a.m!.changePct))
@@ -56,8 +56,13 @@ export function Watch({ holdings, prices }: { holdings: Holding[]; prices: Price
       </section>
 
       <section className="sheet mt-6 rounded-2xl p-4">
-        <h2 className="text-[16px] font-bold">Get these on your phone</h2>
-        <p className="mt-1 text-[13px] leading-snug text-ink-2">FINN pushes material filings and threshold crossings through ntfy, a free notification app with no sign-up. Install ntfy, then subscribe to the topic your FINN instance was set up with.</p>
+        <h2 className="text-[16px] font-bold">Phone alerts</h2>
+        {pushTopic ? (
+          <p className="mt-1 text-[13px] leading-snug text-ink-2">After each hourly check, FINN sends material filings and threshold crossings to the free ntfy app. Install ntfy and subscribe to <b className="font-semibold text-ink">{pushTopic}</b>.</p>
+        ) : (
+          <p className="mt-1 text-[13px] leading-snug text-ink-2">Not switched on for this deployment. The pipeline can push material filings and threshold crossings to the free ntfy app: set an <code className="rounded bg-wash px-1">NTFY_TOPIC</code> secret on the GitHub repo and subscribe to that topic in ntfy. Until then, alerts appear here and on Today.</p>
+        )}
+        <p className="mt-2 text-[12px] text-mute">Phone alerts use the default rule (±4%, 2× volume). The sliders above change what you see in the app.</p>
       </section>
     </div>
   )

@@ -106,8 +106,7 @@ export function ActCard({ f, name, onDone, done }: { f: Filing; name: string; on
         <div className="border-t hair px-4 pb-4">
           {e?.kind === 'results' && <ResultsBody r={e.data} />}
           {e?.kind === 'people' && <PeopleBody p={e.data} />}
-          {e?.kind === 'oneliner' && e.data.text.includes(' — ') && <p className="mt-3 text-[14px] leading-snug text-ink-2">{e.data.text.split(' — ').slice(1).join(' — ')}</p>}
-          {!e && f.blurb && <p className="mt-3 text-[14px] leading-snug text-ink-2">{f.blurb}</p>}
+          <Brief3 f={f} />
           <p className="mt-3 flex items-center justify-between gap-3 text-[12px]">
             <span className="min-w-0 text-mute">{f.why}</span>
             <span className="flex shrink-0 gap-3"><a href={f.url} target="_blank" rel="noreferrer" className="text-signal">Open filing</a><Link href={`/c/${f.ticker}`} className="text-signal">Research</Link></span>
@@ -116,6 +115,44 @@ export function ActCard({ f, name, onDone, done }: { f: Filing; name: string; on
       )}
     </article>
   )
+}
+
+/** Every material item answers: what happened, why it matters, what to check next. */
+function Brief3({ f }: { f: Filing }) {
+  const e = f.enrichment
+  let what = '', why = '', next = ''
+  if (e?.kind === 'oneliner') { const [a, ...b] = e.data.text.split(' — '); what = a; why = b.join(' — '); next = e.data.next || '' }
+  else if (e?.kind === 'results') { const r = resultsRead(e.data); why = r.why; next = r.next }
+  else if (e?.kind === 'people') {
+    const top = e.data.people.some(p => /ceo|md|managing|chief|cfo|chair|whole/i.test(p.role))
+    why = top ? 'A change at the top can reset strategy, capital allocation and guidance.' : 'Board-level change; usually low impact unless it signals a governance issue.'
+    next = top ? 'Listen for the new leader’s priorities and any guidance change on the next earnings call.' : 'Check whether the exit is scheduled (tenure end) or unexplained.'
+  } else { what = f.blurb || ''; why = f.why || '' }
+  const rows = [['What happened', what], ['Why it matters', why], ['Check next', next]].filter(([, v]) => v)
+  if (!rows.length) return null
+  return (
+    <dl className="mt-3 space-y-2">
+      {rows.map(([k, v]) => (
+        <div key={k}><dt className="text-[11px] font-semibold text-mute">{k}</dt><dd className={`text-[14px] leading-snug ${k === 'Check next' ? 'text-signal' : 'text-ink-2'}`}>{v}</dd></div>
+      ))}
+    </dl>
+  )
+}
+
+/** Deterministic read of a results cut: no model involved. */
+export function resultsRead(r: ResultsCut) {
+  const ry = chg(r.revenue.cur, r.revenue.yoy), py = chg(r.pat.cur, r.pat.yoy)
+  const m = (row: MetricRow, k: 'cur' | 'prev' | 'yoy') => r.revenue[k] && row[k] != null ? (row[k]! / r.revenue[k]!) * 100 : null
+  const mCur = m(r.ebitda, 'cur'), mYoy = m(r.ebitda, 'yoy')
+  const dm = mCur != null && mYoy != null ? (mCur - mYoy) * 100 : null // basis points
+  const parts: string[] = []
+  if (ry != null && py != null) parts.push(py > ry + 5 ? `Profit (${pct(py, 0)}) grew faster than revenue (${pct(ry, 0)}) year on year` : py < ry - 5 ? `Profit (${pct(py, 0)}) lagged revenue (${pct(ry, 0)}) year on year` : `Profit and revenue moved together (${pct(py, 0)} vs ${pct(ry, 0)} YoY)`)
+  if (dm != null && !r.lender) parts.push(`${r.lender ? 'NII' : 'EBITDA'} margin ${dm >= 0 ? 'expanded' : 'contracted'} ${Math.abs(Math.round(dm))} bps to ${mCur!.toFixed(1)}%`)
+  let next = 'Open the earnings-call transcript for management’s explanation of the quarter.'
+  if (dm != null && dm <= -150) next = 'Margins fell sharply: check the call for cost drivers and whether management sees it as temporary.'
+  else if (ry != null && py != null && py > ry + 25) next = 'Profit outran revenue by a wide margin: check for one-offs (other income, exceptional items, tax).'
+  else if (ry != null && ry < 0) next = 'Revenue shrank year on year: check whether volume or price drove it, and any guidance cut.'
+  return { why: parts.join('. ') + (parts.length ? '.' : ''), next, marginBps: dm, revYoY: ry, patYoY: py }
 }
 
 /** The single line that earns the card its place. */

@@ -5,7 +5,7 @@ import type { Filing, Holding, PriceBook } from '@/lib/types'
 import { movesInWindow, lastRegular, type Move } from '@/lib/alerts'
 import { routineGroup, CATEGORY_LABEL } from '@/lib/classify'
 import { useDone, useThresholds, useWindow } from '@/lib/prefs'
-import { ActCard, GlanceRow, cleanHeadline } from './cards'
+import { ActCard, GlanceRow, cleanHeadline, resultsRead } from './cards'
 import { pct, inr, day } from '@/lib/format'
 
 const WINDOWS: { id: string; label: string; ms: number }[] = [
@@ -33,7 +33,7 @@ export function Brief({ filings, prices, holdings, updatedAt, now }: { filings: 
     // one row per stock (its latest crossing in the window), most recent first
     const moves: Move[] = holdings.map(h => movesInWindow(h.ticker, prices[h.ticker], th, since)[0]).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.changePct) - Math.abs(a.changePct))
     const lastSession = holdings.map(h => lastRegular(h.ticker, prices[h.ticker], th)).filter(m => m && m.reasons.length) as Move[]
-    return { inWin, act, glance, routine, groups: [...groups.entries()].sort((a, b) => b[1].length - a[1].length), moves, lastSession }
+    return { inWin, act, glance, routine, groups: [...groups.entries()].sort((a, b) => b[1].length - a[1].length), moves, lastSession, insights: portfolioInsights(inWin.filter(f => f.tier === 'act'), moves) }
   }, [filings, since, th, holdings, prices])
 
   const open = view.act.filter(f => !done.includes(f.id))
@@ -90,6 +90,20 @@ export function Brief({ filings, prices, holdings, updatedAt, now }: { filings: 
           ))}
         </div>
       </section>
+
+      {view.insights.length > 0 && (
+        <section className="mt-9" aria-label="Across your portfolio">
+          <SectionTitle title="Across your portfolio" sub="Patterns across holdings, computed from the filings above" />
+          <ul className="sheet divide-y divide-rule rounded-2xl">
+            {view.insights.map((x, i) => (
+              <li key={i} className="px-4 py-3">
+                <p className="text-[14px] leading-snug">{x.text}</p>
+                <p className="mt-1 flex flex-wrap gap-1.5">{x.tickers.map(t => <Link key={t} href={`/c/${t}`} className="rounded-md bg-wash px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">{t}</Link>)}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-9" aria-label="Needs you">
         <SectionTitle title="Needs you" sub={open.length ? 'Highest stakes first. Tap a card for details, ✓ when handled.' : undefined} />
@@ -159,6 +173,33 @@ export function Brief({ filings, prices, holdings, updatedAt, now }: { filings: 
       </footer>
     </div>
   )
+}
+
+/** Cross-holding patterns. Pure arithmetic over enriched filings — nothing here is generated text. */
+function portfolioInsights(act: Filing[], moves: Move[]) {
+  const out: { text: string; tickers: string[] }[] = []
+  // latest results card per company
+  const res = new Map<string, ReturnType<typeof resultsRead> & { t: string }>()
+  for (const f of act) if (f.enrichment?.kind === 'results' && !res.has(f.ticker)) res.set(f.ticker, { ...resultsRead(f.enrichment.data), t: f.ticker })
+  const R = [...res.values()]
+  if (R.length >= 2) {
+    const up = R.filter(r => (r.revYoY ?? 0) > 0)
+    out.push({ text: `${R.length} holdings reported results: ${up.length} grew revenue year on year${R.length - up.length ? `, ${R.length - up.length} shrank` : ''}.`, tickers: R.map(r => r.t) })
+    const contracted = R.filter(r => r.marginBps != null && r.marginBps <= -100)
+    const expanded = R.filter(r => r.marginBps != null && r.marginBps >= 100)
+    if (contracted.length) out.push({ text: `Margins contracted by 100 bps or more at ${contracted.length} of them${expanded.length ? `, while ${expanded.length} expanded` : ''}. Check whether the cause is shared (input costs, pricing) or company-specific.`, tickers: contracted.map(r => r.t) })
+    const lag = R.filter(r => r.revYoY != null && r.patYoY != null && r.patYoY < r.revYoY - 10)
+    if (lag.length) out.push({ text: `Profit growth trailed revenue growth by more than 10 points at ${lag.length === 1 ? 'one holding' : `${lag.length} holdings`}: growth is getting more expensive.`, tickers: lag.map(r => r.t) })
+  }
+  const lead = [...new Set(act.filter(f => f.category === 'management_change').map(f => f.ticker))]
+  if (lead.length >= 2) out.push({ text: `Leadership or board changes at ${lead.length} holdings in this window.`, tickers: lead })
+  const eq = [...new Set(act.filter(f => f.category === 'fund_raise' && /qip|preferential|warrant|rights|buy-?back/i.test(f.headline + ' ' + f.blurb + ' ' + (f.enrichment?.kind === 'oneliner' ? f.enrichment.data.text : ''))).map(f => f.ticker))]
+  if (eq.length) out.push({ text: `${eq.length === 1 ? 'One holding is' : `${eq.length} holdings are`} raising or returning equity capital, which changes your ownership math.`, tickers: eq })
+  const deals = [...new Set(act.filter(f => f.category === 'mna').map(f => f.ticker))]
+  if (deals.length >= 2) out.push({ text: `${deals.length} holdings announced acquisitions, subsidiaries or restructurings.`, tickers: deals })
+  const up = moves.filter(m => m.changePct > 0).length, dn = moves.length - up
+  if (moves.length >= 3) out.push({ text: `${moves.length} holdings crossed your move thresholds: ${up} up, ${dn} down${up >= 3 && dn === 0 ? '. A broad rally, so check whether it is market-wide before reading it as stock-specific' : ''}.`, tickers: moves.map(m => m.ticker) })
+  return out.slice(0, 4)
 }
 
 function SectionTitle({ title, sub, href, link }: { title: string; sub?: string; href?: string; link?: string }) {

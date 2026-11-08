@@ -116,7 +116,7 @@ async function main() {
   // ---- enrich (budgeted, newest material first) ----
   let enriched = 0
   const budget = Number(cfg.enrichBudgetPerRun || 30)
-  const queue = Object.values(store).filter(f => f.tier === 'act' && !f.enrichment && Date.now() - +new Date(f.ts) < 45 * 864e5).sort((a, b) => b.ts.localeCompare(a.ts))
+  const queue = Object.values(store).filter(f => f.tier === 'act' && !f.enrichment && Date.now() - +new Date(f.ts) < 75 * 864e5).sort((a, b) => b.ts.localeCompare(a.ts))
   if (hasKey()) for (const f of queue.slice(0, budget)) {
     const name = holdings.find(h => h.ticker === f.ticker)?.name || f.ticker
     try {
@@ -130,7 +130,7 @@ async function main() {
         if (p) f.enrichment = { kind: 'people', data: p }
       } else {
         const t = await oneLiner(f.url, f.headline, f.blurb, name, ctx)
-        if (t) f.enrichment = { kind: 'oneliner', data: { text: t, model: 'bulk' } }
+        if (t) f.enrichment = { kind: 'oneliner', data: { text: t.text, next: t.next, model: 'bulk' } }
       }
       if (f.enrichment) enriched++
       log('enriched', f.ticker, f.category, f.enrichment?.kind || '-')

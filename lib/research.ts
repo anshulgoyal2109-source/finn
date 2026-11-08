@@ -150,7 +150,9 @@ export async function narrative(f: CompanyFundamentals, facts: Facts, o: Researc
   })
   const ids = new Set([...guidance.map(g => g.id), ...claims.map((c: any) => c.id)])
   const s = r.data || {}
-  const scorecard = (s.scorecard || []).map((v: any) => ({ ...v, cites: (v.cites || []).filter((c: string) => ids.has(c)) })).filter((v: any) => v.cites.length)
+  const gids = new Set(guidance.map(g => g.id))
+  // A verdict is only a verdict if it grades a real, quote-verified promise: commentary alone doesn't count.
+  const scorecard = (s.scorecard || []).map((v: any) => ({ ...v, cites: (v.cites || []).filter((c: string) => ids.has(c)) })).filter((v: any) => v.cites.some((c: string) => gids.has(c)))
   return {
     business, guidance, scorecard, scoreline: s.scoreline || '',
     narrativeVsNumbers: (s.narrative_vs_numbers || []).map((x: any) => ({ ...x, cites: (x.cites || []).filter((c: string) => ids.has(c)) })).filter((x: any) => x.cites.length),

@@ -209,18 +209,22 @@ async function wikipedia(name: string, company: string): Promise<{ extract: stri
 }
 
 // ---------------- Everything else material: one line that earns attention ----------------
-export async function oneLiner(filingUrl: string, headline: string, blurb: string, company: string, ctx: Ctx): Promise<string | null> {
+export async function oneLiner(filingUrl: string, headline: string, blurb: string, company: string, ctx: Ctx): Promise<{ text: string; next?: string } | null> {
   let text = ''
   try { const pages = await readPdf(filingUrl, 15_000_000); text = withPageMarkers(pages, [0, 1, 2].filter(i => i < pages.length), 5000) } catch { text = '' }
   if (!text) return null
   const r = await callLLM({
     tier: 'bulk', stage: 'filing.oneliner', cache: ctx.cache, ledger: ctx.ledger,
-    schema: S.obj({ what: S.str('What happened, with the key number (size, price, stake, date). Max 22 words.'), so_what: S.str('Why an investor should care, stated factually from the filing. Max 18 words. Empty if nothing beyond "what".') }),
+    schema: S.obj({
+      what: S.str('What happened, with the key number (size, price, stake, date). Max 22 words.'),
+      so_what: S.str('Why an investor should care, stated factually from the filing. Max 18 words. Empty if nothing beyond "what".'),
+      check_next: S.str('One concrete thing the investor should verify next (a number, a document, an approval, a date), max 16 words. Empty if nothing specific.'),
+    }),
     system: 'You write terse investor notes from Indian exchange filings. Facts from the filing only; no hype, no speculation, no advice.',
     prompt: `Company: ${company}\nHeadline: ${headline}\n\n${text}`,
   })
   const d = r.data
-  return d?.what ? [d.what, d.so_what].filter(Boolean).join(' — ') : null
+  return d?.what ? { text: [d.what, d.so_what].filter(Boolean).join(' — '), next: d.check_next || undefined } : null
 }
 
 // ---------------- Low-confidence classification, batched ----------------
