@@ -84,7 +84,7 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { 
         </h1>
         <p className="mt-2 text-[15px] leading-snug text-ink-2">
           FINN read {view.inWin.length} filings from your {holdings.length} holdings in the last {w.label}
-          {view.lastSession.length > 0 ? `, and ${view.lastSession.length === 1 ? 'one stock' : `${view.lastSession.length} stocks`} moved unusually.` : '.'}
+          {view.lastSession.length > 0 ? `. ${view.lastSession.length === 1 ? 'One stock' : `${view.lastSession.length} stocks`} moved unusually in the last session.` : '.'}
         </p>
         <Sieve items={view.inWin} done={done} />
         <p className="mt-2 flex gap-4 text-[11px] text-mute">
@@ -222,7 +222,7 @@ function portfolioInsights(act: Filing[], moves: Move[]) {
   const deals = [...new Set(act.filter(f => f.category === 'mna').map(f => f.ticker))]
   if (deals.length >= 2) out.push({ text: `${deals.length} holdings announced acquisitions, subsidiaries or restructurings.`, tickers: deals })
   const up = moves.filter(m => m.changePct > 0).length, dn = moves.length - up
-  if (moves.length >= 3) out.push({ text: `${moves.length} holdings crossed your move thresholds: ${up} up, ${dn} down${up >= 3 && dn === 0 ? '. A broad rally, so check whether it is market-wide before reading it as stock-specific' : ''}.`, tickers: moves.map(m => m.ticker) })
+  if (moves.length >= 3) out.push({ text: `${moves.length} holdings crossed your move thresholds in this window: ${up} up, ${dn} down${up >= 3 && dn === 0 ? '. A broad rally, so check whether it is market-wide before reading it as stock-specific' : ''}.`, tickers: moves.map(m => m.ticker) })
   return out.slice(0, 4)
 }
 
