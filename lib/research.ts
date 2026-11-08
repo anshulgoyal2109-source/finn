@@ -171,10 +171,11 @@ export async function askDossier(d: Dossier, question: string, o: { ledger?: Led
   const r = await callLLM({
     tier: 'reason', stage: 'research.ask', ledger: o.ledger, cache: o.cache, maxOutputTokens: 1500, temperature: 0.2,
     schema: S.obj({ answer: S.str('≤110 words, direct, numbers first'), sources: S.arr(S.obj({ doc: S.int(), page: S.int() })), confidence: S.enum(['high', 'medium', 'low']) }),
-    system: 'Answer an investor’s question about one company using ONLY the material provided: earnings-call transcripts (cite doc and page), extracted guidance, and reported numbers. Prefer management’s own explanation from the transcripts, and say where the numbers agree or not. If the material does not answer it, say exactly what is missing. No outside knowledge, no news.',
+    system: 'Answer an investor’s question about one company using ONLY the material provided: earnings-call transcripts (cite doc and page), extracted guidance, and reported numbers. Prefer management’s own explanation from the transcripts, and say where the numbers agree or not. If the material does not answer it, say exactly what is missing. No outside knowledge, no news. Never write citations inside the answer text; put them only in sources.',
     prompt: `QUESTION: ${question}\n\nTRANSCRIPTS:\n${ok.map(x => `doc ${x.i} = ${x.t.label}\n${x.text}`).join('\n\n')}\n\nGUIDANCE: ${JSON.stringify((n.guidance || []).map(({ url, quote, ...g }: any) => g))}\nFACTS: ${JSON.stringify({ quarterly: d.facts.quarterly, trajectory: d.facts.trajectory, cash: d.facts.cash, balance: d.facts.balance, flags: d.facts.flags })}`,
   })
   const data = r.data || {}
   const sources = (data.sources || []).map((s: any) => ok.find(x => x.i === s.doc) ? { label: `${ok.find(x => x.i === s.doc)!.t.label}, p.${s.page}`, url: `${ok.find(x => x.i === s.doc)!.t.url}#page=${s.page}` } : null).filter(Boolean)
-  return { answer: data.answer, confidence: data.confidence, sources }
+  const answer = String(data.answer || '').replace(/\s*\((?:doc \d|facts|page \d)[^)]*\)/gi, '')
+  return { answer, confidence: data.confidence, sources }
 }
