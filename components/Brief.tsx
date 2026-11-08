@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { runChecks, fmtMetric, type Metric, type Thesis } from '@/lib/thesis'
 import Link from 'next/link'
 import type { Filing, Holding, PriceBook } from '@/lib/types'
-import { movesInWindow, lastRegular, type Move } from '@/lib/alerts'
+import { lastRegular, alertHistory, type Move, type AlertEvent } from '@/lib/alerts'
 import { routineGroup, CATEGORY_LABEL } from '@/lib/classify'
 import { useDone, useThresholds, useWindow } from '@/lib/prefs'
 import { ActCard, GlanceRow, cleanHeadline, resultsRead } from './cards'
@@ -39,8 +39,9 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { 
     const groups = new Map<string, Filing[]>()
     for (const f of routine) { const g = routineGroup(f.category, f.headline); groups.set(g, [...(groups.get(g) || []), f]) }
     // one row per stock (its latest crossing in the window), most recent first
-    const moves: Move[] = holdings.map(h => movesInWindow(h.ticker, prices[h.ticker], th, since)[0]).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.changePct) - Math.abs(a.changePct))
-    const lastSession = holdings.map(h => lastRegular(h.ticker, prices[h.ticker], th)).filter(m => m && m.reasons.length) as Move[]
+    const hist = alertHistory(holdings, prices, th, filings, 30).filter(a => a.date >= since.slice(0, 10))
+    const moves: AlertEvent[] = holdings.map(h => hist.find(a => a.ticker === h.ticker)).filter((x): x is AlertEvent => !!x).sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.changePct) - Math.abs(a.changePct))
+    const lastSession = holdings.filter(h => !(th.muted || []).includes(h.ticker)).map(h => lastRegular(h.ticker, prices[h.ticker], th)).filter(m => m && m.reasons.length) as Move[]
     return { inWin, act, glance, routine, groups: [...groups.entries()].sort((a, b) => b[1].length - a[1].length), moves, lastSession, insights: portfolioInsights(inWin.filter(f => f.tier === 'act'), moves) }
   }, [filings, since, th, holdings, prices])
 
@@ -147,13 +148,14 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { 
 
       {view.moves.length > 0 && (
         <section className="mt-9" aria-label="Unusual moves">
-          <SectionTitle title="Unusual moves" sub={`Beyond ±${th.priceMovePct}% or ${th.volumeMultiple}× normal volume`} href="/watch" link="Edit rule" />
+          <SectionTitle title="Unusual moves" sub={`Beyond ±${th.priceMovePct}% or ${th.volumeMultiple}× normal volume, with the likeliest reason`} href="/watch" link="History" />
           <div className="scroll-x -mx-4 flex gap-2 px-4 pb-1">
             {view.moves.map(m => (
               <Link key={m.ticker + m.date} href={`/c/${m.ticker}`} className="sheet w-[138px] shrink-0 rounded-2xl p-3">
                 <p className="text-[13px] font-semibold">{m.ticker}</p>
                 <p className={`num mt-1 text-[22px] font-bold leading-none ${m.changePct >= 0 ? 'text-up' : 'text-down'}`}>{pct(m.changePct)}</p>
-                <p className="mt-2 text-[11px] leading-snug text-mute">{m.volMultiple.toFixed(1)}× volume<br />{new Date(m.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                <p className="mt-2 text-[11px] leading-snug text-mute">{m.volMultiple.toFixed(1)}× volume · {new Date(m.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                <p className={`mt-1.5 text-[11px] font-medium ${m.cause === 'unexplained' ? 'text-warn' : m.cause === 'filing' ? 'text-signal' : 'text-mute'}`}>{m.cause === 'filing' ? 'Filing that day' : m.cause === 'sector' ? 'Sector move' : m.cause === 'market' ? 'Market-wide' : 'Unexplained'}</p>
               </Link>
             ))}
           </div>
