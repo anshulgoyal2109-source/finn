@@ -231,15 +231,29 @@ function Tally({ rows }: { rows: Verdict[] }) {
   )
 }
 
+/** Evidence-based confidence: how many verified quotes, across how many calls, and whether the grade rests on numbers. */
+export function verdictConfidence(v: Verdict, g: Map<string, any>) {
+  const quotes = v.cites.map(id => g.get(id)).filter(x => x && /g\d+$/.test(x.id))
+  const calls = new Set(quotes.map(q => q.call)).size
+  const numeric = /\d/.test(`${v.delivered} ${v.evidence}`)
+  let level: 'High' | 'Medium' | 'Low' = 'Low'
+  if (v.status === 'pending') level = numeric && quotes.length ? 'Medium' : 'Low'
+  else if (quotes.length >= 2 && calls >= 2 && numeric) level = 'High'
+  else if (quotes.length >= 1 && numeric) level = 'Medium'
+  const why = `${quotes.length} verified quote${quotes.length === 1 ? '' : 's'} from ${calls} call${calls === 1 ? '' : 's'}${numeric ? ', graded against reported numbers' : ', no number to grade against'}${v.status === 'pending' ? '; target period not over yet' : ''}`
+  return { level, why }
+}
+
 function VerdictRow({ v, g }: { v: Verdict; g: Map<string, any> }) {
   const [open, setOpen] = useState(false)
   const s = STATUS[v.status]
+  const conf = verdictConfidence(v, g)
   return (
     <li className="sheet rounded-2xl">
       <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-start gap-3 p-3.5 text-left">
         <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold ${s.cls}`} aria-label={s.label}>{s.glyph}</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[14px] font-semibold leading-snug">{v.metric}</span>
+          <span className="flex items-baseline justify-between gap-2"><span className="text-[14px] font-semibold leading-snug">{v.metric}</span><span className={`shrink-0 text-[11px] ${conf.level === 'High' ? 'text-up' : conf.level === 'Medium' ? 'text-ink-2' : 'text-warn'}`}>{conf.level} confidence</span></span>
           <span className="mt-1 block text-[13px] leading-snug"><span className="text-mute">Promised </span>{v.promised}</span>
           <span className="mt-0.5 block text-[13px] leading-snug"><span className="text-mute">Delivered </span>{v.delivered}</span>
         </span>
@@ -248,6 +262,7 @@ function VerdictRow({ v, g }: { v: Verdict; g: Map<string, any> }) {
       {open && (
         <div className="border-t hair px-3.5 pb-3.5 pt-2">
           <p className="text-[13px] leading-snug text-ink-2">{v.evidence}</p>
+          <p className="mt-1 text-[11px] text-mute">Confidence {conf.level.toLowerCase()}: {conf.why}.</p>
           <Cites ids={v.cites} g={g} quotes />
         </div>
       )}

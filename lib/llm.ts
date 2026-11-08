@@ -114,11 +114,31 @@ export async function callLLM<T = any>(o: CallOpts): Promise<CallResult<T>> {
     const sources = (cand?.groundingMetadata?.groundingChunks || []).map((c: any) => ({ title: c.web?.title || '', url: c.web?.uri || '' })).filter((s: any) => s.url)
     let data: any = text
     if (o.schema || o.json || o.tier === 'search') { try { data = parseJson(text) } catch { if (o.schema) { lastErr = 'bad json'; continue } } }
+    if (o.schema) { const bad = conforms(data, o.schema); if (bad) { lastErr = `schema: ${bad}`; o.ledger?.add(o.stage + '.rejected', o.tier, 0, 0, false, model); continue } }
     const res = { data, text, sources, model: j.modelVersion || model }
     await o.cache?.set(ck, res)
     return { ...res, cached: false }
   }
   throw new Error(`Gemini failed after retries: ${lastErr}`)
+}
+
+/** Minimal validator for the schema subset we use. Gemini's responseSchema is a request, not a guarantee. */
+export function conforms(v: any, sc: any, path = '$'): string | null {
+  if (!sc) return null
+  if (v == null) return sc.nullable ? null : `${path} is missing`
+  switch (sc.type) {
+    case 'OBJECT': {
+      if (typeof v !== 'object' || Array.isArray(v)) return `${path} is not an object`
+      for (const k of sc.required || []) if (!(k in v) && !sc.properties?.[k]?.nullable) return `${path}.${k} is missing`
+      for (const [k, sub] of Object.entries(sc.properties || {})) if (k in v) { const e = conforms(v[k], sub, `${path}.${k}`); if (e) return e }
+      return null
+    }
+    case 'ARRAY': { if (!Array.isArray(v)) return `${path} is not an array`; for (let i = 0; i < v.length; i++) { const e = conforms(v[i], sc.items, `${path}[${i}]`); if (e) return e } return null }
+    case 'STRING': return typeof v !== 'string' ? `${path} is not a string` : sc.enum && !sc.enum.includes(v) ? `${path} '${v}' not in enum` : null
+    case 'NUMBER': case 'INTEGER': return typeof v === 'number' && isFinite(v) ? null : `${path} is not a number`
+    case 'BOOLEAN': return typeof v === 'boolean' ? null : `${path} is not a boolean`
+  }
+  return null
 }
 
 export function parseJson(t: string): any {
