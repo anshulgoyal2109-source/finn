@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import { useState } from 'react'
 import type { Filing, ResultsCut, PeopleChange, MetricRow } from '@/lib/types'
 import { CATEGORY_LABEL } from '@/lib/classify'
 import { inr, pct, chg, tone, ago } from '@/lib/format'
@@ -78,35 +79,59 @@ export function PeopleBody({ p }: { p: PeopleChange }) {
   )
 }
 
+/** Compact by default: what happened + the one line that matters. Tap to open the full detail. */
 export function ActCard({ f, name, onDone, done }: { f: Filing; name: string; onDone?: () => void; done?: boolean }) {
+  const [open, setOpen] = useState(false)
   const e = f.enrichment
+  const title = e?.kind === 'results' ? `${name}: ${e.data.period} results` : e?.kind === 'people' ? peopleTitle(e.data, name) : e?.kind === 'oneliner' ? e.data.text.split(' — ')[0] : cleanHeadline(f.headline)
   return (
-    <article id={`f-${f.id}`} className="sheet rounded-2xl p-4">
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+    <article id={`f-${f.id}`} className="sheet rounded-2xl">
+      <div className="flex items-start gap-3 p-4">
+        <button onClick={() => setOpen(!open)} aria-expanded={open} className="min-w-0 flex-1 text-left">
           <p className="flex items-center gap-2 text-[12px] text-mute">
-            <Link href={`/c/${f.ticker}`} className="font-semibold text-ink hover:text-signal">{f.ticker}</Link>
-            <Pill kind="signal">{CATEGORY_LABEL[f.category]}</Pill>
+            <span className="font-semibold text-ink">{f.ticker}</span>
+            <span className="text-signal">{CATEGORY_LABEL[f.category]}</span>
             <span>{ago(f.ts)}</span>
+            <span className={`ml-auto transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden>⌄</span>
           </p>
-          <h3 className="mt-1.5 text-[16px] font-semibold leading-snug">
-            {e?.kind === 'results' ? `${name}: ${e.data.period} results` : e?.kind === 'people' ? peopleTitle(e.data, name) : e?.kind === 'oneliner' ? e.data.text.split(' — ')[0] : cleanHeadline(f.headline)}
-          </h3>
+          <h3 className="mt-1 line-clamp-2 text-[15px] font-semibold leading-snug">{title}</h3>
+          <KeyLine f={f} />
+        </button>
+        {onDone && (
+          <button onClick={onDone} aria-label={done ? 'Mark as not done' : 'Mark as done'}
+            className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[14px] ${done ? 'border-up bg-up text-paper' : 'hair text-mute hover:border-ink hover:text-ink'}`}>✓</button>
+        )}
+      </div>
+      {open && (
+        <div className="border-t hair px-4 pb-4">
+          {e?.kind === 'results' && <ResultsBody r={e.data} />}
+          {e?.kind === 'people' && <PeopleBody p={e.data} />}
+          {e?.kind === 'oneliner' && e.data.text.includes(' — ') && <p className="mt-3 text-[14px] leading-snug text-ink-2">{e.data.text.split(' — ').slice(1).join(' — ')}</p>}
+          {!e && f.blurb && <p className="mt-3 text-[14px] leading-snug text-ink-2">{f.blurb}</p>}
+          <p className="mt-3 flex items-center justify-between gap-3 text-[12px]">
+            <span className="min-w-0 text-mute">{f.why}</span>
+            <span className="flex shrink-0 gap-3"><a href={f.url} target="_blank" rel="noreferrer" className="text-signal">Open filing</a><Link href={`/c/${f.ticker}`} className="text-signal">Research</Link></span>
+          </p>
         </div>
-      </header>
-      {e?.kind === 'results' && <ResultsBody r={e.data} />}
-      {e?.kind === 'people' && <PeopleBody p={e.data} />}
-      {e?.kind === 'oneliner' && e.data.text.includes(' — ') && <p className="mt-2 text-[14px] leading-snug text-ink-2">{e.data.text.split(' — ').slice(1).join(' — ')}</p>}
-      {!e && f.blurb && <p className="mt-2 text-[14px] leading-snug text-ink-2">{f.blurb}</p>}
-      <footer className="mt-3 flex items-center justify-between gap-2 border-t hair pt-3">
-        <p className="min-w-0 truncate text-[12px] text-mute" title={f.why}>{f.why}</p>
-        <div className="flex shrink-0 items-center gap-1">
-          <a href={f.url} target="_blank" rel="noreferrer" className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-2 hover:bg-wash">Filing</a>
-          {onDone && <button onClick={onDone} className={`rounded-lg px-3 py-1.5 text-[13px] font-semibold ${done ? 'bg-wash text-ink-2' : 'bg-ink text-paper'}`}>{done ? 'Undo' : 'Done'}</button>}
-        </div>
-      </footer>
+      )}
     </article>
   )
+}
+
+/** The single line that earns the card its place. */
+function KeyLine({ f }: { f: Filing }) {
+  const e = f.enrichment
+  if (e?.kind === 'results') {
+    const r = e.data
+    const items: [string, number | null][] = [['Revenue', chg(r.revenue.cur, r.revenue.yoy)], ['Profit', chg(r.pat.cur, r.pat.yoy)]]
+    return <p className="mt-1.5 flex gap-3 text-[13px]">{items.map(([k, v]) => <span key={k} className="text-ink-2">{k} <b className={`font-semibold ${tone(v)}`}>{pct(v, 0)}</b></span>)}<span className="text-mute">vs year ago</span></p>
+  }
+  if (e?.kind === 'people') {
+    const inc = e.data.people.find(x => x.direction === 'in' && x.bio)
+    return inc?.bio ? <p className="mt-1.5 line-clamp-2 text-[13px] leading-snug text-ink-2">{inc.bio}</p> : null
+  }
+  if (e?.kind === 'oneliner' && e.data.text.includes(' — ')) return <p className="mt-1.5 line-clamp-1 text-[13px] text-ink-2">{e.data.text.split(' — ').slice(1).join(' — ')}</p>
+  return f.blurb && !e ? <p className="mt-1.5 line-clamp-1 text-[13px] text-ink-2">{f.blurb}</p> : null
 }
 
 function peopleTitle(p: PeopleChange, name: string) {
@@ -121,11 +146,11 @@ const shortRole = (r: string) => r.replace(/Managing Director (and|&) Chief Exec
 export function GlanceRow({ f }: { f: Filing }) {
   const text = f.enrichment?.kind === 'oneliner' ? f.enrichment.data.text : f.blurb || cleanHeadline(f.headline)
   return (
-    <li className="flex gap-3 border-t hair py-3 first:border-t-0">
+    <li className="flex gap-3 border-t hair py-3.5 first:border-t-0">
       <Link href={`/c/${f.ticker}`} className="w-[86px] shrink-0 text-[13px] font-semibold hover:text-signal">{f.ticker}<span className="block text-[11px] font-normal text-mute">{CATEGORY_LABEL[f.category]}</span></Link>
       <a href={f.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 text-[13px] leading-snug text-ink-2 hover:text-ink">
-        {text}
-        <span className="mt-0.5 block text-[11px] text-mute">{ago(f.ts)}{f.why ? ` · ${f.why}` : ''}</span>
+        <span className="line-clamp-2">{text}</span>
+        <span className="mt-0.5 block text-[11px] text-mute">{ago(f.ts)}</span>
       </a>
     </li>
   )
