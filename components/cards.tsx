@@ -37,6 +37,11 @@ export function profitFlags(r: ResultsCut): { text: string; tone: 'bad' | 'warn'
   const ex = r.exceptional?.cur
   if (ex != null && r.pbt.cur && Math.abs(ex) >= Math.abs(r.pbt.cur) * 0.03)
     out.push({ text: `Exceptional items of ${ex < 0 ? '−' : '+'}₹${inr(Math.abs(Math.round(ex)))} cr this quarter (${Math.round(Math.abs(ex) / Math.abs(r.pbt.cur) * 100)}% of operating PBT). PAT includes them; PBT above is before them.`, tone: ex < 0 ? 'warn' : 'neutral' })
+  const exy = r.exceptional?.yoy, exq = r.exceptional?.prev
+  if (exy != null && r.pbt.yoy && Math.abs(exy) >= Math.abs(r.pbt.yoy) * 0.03)
+    out.push({ text: `The year-ago quarter carried exceptional items of ${exy < 0 ? '−' : '+'}₹${inr(Math.abs(Math.round(exy)))} cr, so the year-on-year PAT change is ${exy < 0 ? 'flattered' : 'understated'}.`, tone: 'neutral' })
+  else if (exq != null && r.pbt.prev && Math.abs(exq) >= Math.abs(r.pbt.prev) * 0.03)
+    out.push({ text: `Last quarter carried exceptional items of ${exq < 0 ? '−' : '+'}₹${inr(Math.abs(Math.round(exq)))} cr, so the quarter-on-quarter PAT change is ${exq < 0 ? 'flattered' : 'understated'}.`, tone: 'neutral' })
   const oi = r.otherIncome?.cur
   if (!r.lender && oi != null && r.pbt.cur && r.pbt.cur > 0 && oi / r.pbt.cur >= 0.25)
     out.push({ text: `Other income is ${Math.round(oi / r.pbt.cur * 100)}% of PBT, so profit leans on non-operating income (treasury, one-offs).`, tone: 'warn' })
@@ -150,7 +155,13 @@ function Brief3({ f }: { f: Filing }) {
   const e = f.enrichment
   let what = '', why = '', next = ''
   if (e?.kind === 'oneliner') { const [a, ...b] = e.data.text.split(' — '); what = a; why = b.join(' — '); next = e.data.next || '' }
-  else if (e?.kind === 'results') { const r = resultsRead(e.data); next = profitFlags(e.data).some(x => x.tone !== 'neutral') ? 'Profit quality is mixed: check the notes to the results for what drove the one-offs, then the call for whether they recur.' : r.next }
+  else if (e?.kind === 'results') {
+    const r = resultsRead(e.data), fl = profitFlags(e.data).map(x => x.text)
+    next = fl.some(t => t.startsWith('Exceptional')) ? 'Read the note on exceptional items in the filing, then check the call for whether they recur.'
+      : fl.some(t => t.startsWith('Other income')) ? 'Check how much of profit is treasury income versus operations, and how long the cash pile lasts at the current burn.'
+      : fl.some(t => t.startsWith('Operating loss')) ? 'Check the call for the path to operating break-even and the cash runway.'
+      : r.next
+  }
   else if (e?.kind === 'people') {
     const top = e.data.people.some(p => /ceo|md|managing|chief|cfo|chair|whole/i.test(p.role))
     why = top ? 'A change at the top can reset strategy, capital allocation and guidance.' : 'Board-level change; usually low impact unless it signals a governance issue.'

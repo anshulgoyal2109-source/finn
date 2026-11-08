@@ -103,7 +103,16 @@ function verify(cut: ResultsCut, f: CompanyFundamentals | null) {
   const close = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.02)
   if (rev == null && pat == null) return
   const ok = (rev == null || close(cut.revenue.cur, rev)) && (pat == null || close(cut.pat.cur, pat))
-  if (ok) cut.verified = 'match'
+  if (ok) {
+    cut.verified = 'match'
+    // Exceptional items: derive from two reported lines instead of trusting the model's sign.
+    // standardised PBT is after exceptional items; the filing's PBT we read is before them.
+    const pbtA = q.rows['Profit before tax']
+    if (pbtA) {
+      const d = (k: number, before: number | null) => { const after = pbtA[k]; if (after == null || before == null) return null; const x = after - before; return Math.abs(x) >= Math.max(1, Math.abs(before) * 0.01) ? Math.round(x * 100) / 100 : 0 }
+      cut.exceptional = { cur: d(i, cut.pbt.cur), prev: i >= 1 ? d(i - 1, cut.pbt.prev) : null, yoy: i >= 4 ? d(i - 4, cut.pbt.yoy) : null }
+    }
+  }
   else if (f.basis !== cut.basis) { cut.verified = 'unchecked'; cut.note = `Filing read on ${cut.basis} basis; standardised table is ${f.basis}` }
   else { cut.verified = 'mismatch'; cut.note = `Standardised table shows revenue ${rev?.toLocaleString('en-IN')} / PAT ${pat?.toLocaleString('en-IN')}` }
 }
