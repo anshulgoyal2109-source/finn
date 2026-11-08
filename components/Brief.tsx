@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { runChecks, fmtMetric, type Metric, type Thesis } from '@/lib/thesis'
+import type { UpcomingEvent } from '@/lib/events'
 import Link from 'next/link'
 import type { Filing, Holding, PriceBook } from '@/lib/types'
 import { lastRegular, alertHistory, type Move, type AlertEvent } from '@/lib/alerts'
@@ -14,7 +15,10 @@ const WINDOWS: { id: string; label: string; ms: number }[] = [
   { id: '7d', label: '7 days', ms: 7 * 864e5 }, { id: '30d', label: '30 days', ms: 30 * 864e5 },
 ]
 
-export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { filings: Filing[]; prices: PriceBook; holdings: Holding[]; updatedAt: string; now: number; metrics: Record<string, Record<string, Metric>> }) {
+export function Brief({ filings, prices, holdings, updatedAt, now, metrics, events }: { filings: Filing[]; prices: PriceBook; holdings: Holding[]; updatedAt: string; now: number; metrics: Record<string, Record<string, Metric>>; events: UpcomingEvent[] }) {
+  const [intro, setIntro] = useState(false)
+  useEffect(() => { try { setIntro(!localStorage.getItem('finn.intro')) } catch { /* ignore */ } }, [])
+  const closeIntro = () => { setIntro(false); try { localStorage.setItem('finn.intro', '1') } catch { /* ignore */ } }
   const [theses, setTheses] = useState<Record<string, Thesis>>({})
   useEffect(() => {
     const o: Record<string, Thesis> = {}
@@ -22,11 +26,16 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { 
     setTheses(o)
   }, [holdings])
   const thesisAlerts = Object.entries(theses).flatMap(([t, th]) => runChecks(th, metrics[t] || {}).filter(r => r.status === 'breached').map(r => ({ t, r })))
-  const [win, setWin] = useWindow()
+  const [win, setWinRaw, winReady] = useWindow()
+  const [chosen, setChosen] = useState(true)
+  useEffect(() => { try { setChosen(!!localStorage.getItem('finn.window')) } catch { /* ignore */ } }, [])
+  const quiet24 = !filings.some(f => f.tier === 'act' && now - +new Date(f.ts) < 864e5)
+  const setWin = (x: string) => { setChosen(true); setWinRaw(x) }
+  void winReady
   const [th] = useThresholds()
   const [done, setDone] = useDone()
   const [showDone, setShowDone] = useState(false)
-  const w = WINDOWS.find(x => x.id === win) || WINDOWS[0]
+  const w = WINDOWS.find(x => x.id === (!chosen && quiet24 ? '7d' : win)) || WINDOWS[0]
   const since = new Date(now - w.ms).toISOString()
   const name = (t: string) => holdings.find(h => h.ticker === t)?.name || t
 
@@ -77,6 +86,19 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { 
         <button onClick={listen} className="rounded-full border hair bg-sheet px-3 py-1 text-[12px] font-medium text-ink-2 hover:text-ink" aria-label="Read my brief aloud">▶ Listen</button>
       </header>
 
+      {intro && (
+        <aside className="mt-4 rounded-2xl bg-ink p-4 text-paper" aria-label="About this demo">
+          <p className="text-[15px] font-semibold leading-snug">FINN reads every exchange filing for your portfolio and shows only what needs you.</p>
+          <p className="mt-1.5 text-[13px] leading-snug text-paper/75">This demo follows a mock portfolio of 18 real NSE companies. The filings, prices and transcripts are real and refresh hourly on market days.</p>
+          <ol className="mt-3 space-y-1.5 text-[13px] leading-snug">
+            <li><span className="text-paper/60">1.</span> Tap a results card below: numbers read from the filing, cross-checked.</li>
+            <li><span className="text-paper/60">2.</span> Open <Link href="/c/ASIANPAINT" className="underline underline-offset-2">Asian Paints</Link>: what management promised vs what it delivered, each line linked to the transcript page.</li>
+            <li><span className="text-paper/60">3.</span> In Research, try any NSE company. FINN reads it live in about 20 seconds.</li>
+          </ol>
+          <button onClick={closeIntro} className="mt-3 rounded-lg bg-paper px-3 py-1.5 text-[13px] font-semibold text-ink">Got it</button>
+        </aside>
+      )}
+
       {/* Hero: one statement, then the sieve that shows how much was filtered */}
       <section aria-label="Summary" className="mt-6">
         <h1 className="text-[34px] font-bold leading-[1.05] tracking-[-0.025em]">
@@ -110,6 +132,24 @@ export function Brief({ filings, prices, holdings, updatedAt, now, metrics }: { 
                 <span className="shrink-0 text-[12px] font-semibold text-down">Breached</span>
               </Link></li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {events.length > 0 && (
+        <section className="mt-9" aria-label="Coming up">
+          <SectionTitle title="Coming up" sub="Dates companies have announced, from their own filings" />
+          <ul className="sheet divide-y divide-rule rounded-2xl">
+            {events.slice(0, 6).map(e => {
+              const d = new Date(e.date + 'T00:00:00Z'), days = Math.round((+d - +new Date(new Date(now).toISOString().slice(0, 10) + 'T00:00:00Z')) / 864e5)
+              return (
+                <li key={e.ticker + e.date + e.kind}><a href={e.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3">
+                  <span className="w-11 shrink-0 text-center"><span className="block text-[18px] font-bold leading-none">{d.getUTCDate()}</span><span className="text-[11px] text-mute">{d.toLocaleDateString('en-IN', { month: 'short', timeZone: 'UTC' })}</span></span>
+                  <span className="min-w-0 flex-1"><span className="text-[14px] font-semibold">{e.ticker}</span> <span className="text-[13px] text-signal">{e.kind}</span><span className="block truncate text-[12px] text-mute">{e.detail}</span></span>
+                  <span className="shrink-0 text-[12px] text-mute">{days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`}</span>
+                </a></li>
+              )
+            })}
           </ul>
         </section>
       )}

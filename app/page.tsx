@@ -1,6 +1,7 @@
 import { Brief } from '@/components/Brief'
 import { loadFilings, loadPrices, loadHoldings, loadDossier } from '@/lib/data'
 import { metricsFromFacts } from '@/lib/thesis'
+import { upcomingEvents } from '@/lib/events'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,5 +14,5 @@ export default function Today() {
   const slim = Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, v.slice(-60)]))
   // reported metrics per holding, for checking the investor's own thesis conditions on-device
   const metrics = Object.fromEntries(h.holdings.map(x => { const d = loadDossier(x.ticker); return [x.ticker, d ? metricsFromFacts(d.facts) : {}] }))
-  return <Brief filings={filings} prices={slim} holdings={h.holdings} updatedAt={h.updatedAt} now={now} metrics={metrics} />
+  return <Brief filings={filings} prices={slim} holdings={h.holdings} updatedAt={h.updatedAt} now={now} metrics={metrics} events={upcomingEvents(filings, now, 21)} />
 }

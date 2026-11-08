@@ -145,11 +145,12 @@ export async function narrative(f: CompanyFundamentals, facts: Facts, o: Researc
 - 'revised' = the same metric's guidance changed between calls (say from what to what). 'pending' = horizon not yet reached; say what run-rate is needed.
 - Put numbers in 'delivered' and 'evidence'. Don't invent numbers that are not in NUMBERS.
 - Prefer 4-7 scorecard rows on headline metrics; merge repeats of the same promise across calls.
-- Bull and bear: 3 points each, each grounded in a number or a quote.`,
+- Bull and bear: 3 points each, each grounded in a number or a quote.
+- Write for an investor: never mention the section names above (GUIDANCE, NUMBERS…) or ids inside the prose; ids go only in cites.`,
     prompt: `COMPANY: ${f.name} (${f.ticker})\n\nGUIDANCE:\n${JSON.stringify(guidance.map(({ url, ...g }) => g))}\n\nCLAIMS:\n${JSON.stringify(claims.map(({ url, ...c }: any) => c))}\n\nANALYST PUSHBACK:\n${JSON.stringify(extracted.map(e => ({ call: e.call, pushback: e.pushback })))}\n\nANNUAL REPORT RISKS:\n${JSON.stringify(risks)}\n\nNUMBERS:\n${JSON.stringify(NUMBERS)}`,
   })
   const ids = new Set([...guidance.map(g => g.id), ...claims.map((c: any) => c.id)])
-  const s = r.data || {}
+  const s = scrub(r.data || {})
   const gids = new Set(guidance.map(g => g.id))
   // A verdict is only a verdict if it grades a real, quote-verified promise: commentary alone doesn't count.
   const scorecard = (s.scorecard || []).map((v: any) => ({ ...v, cites: (v.cites || []).filter((c: string) => ids.has(c)) })).filter((v: any) => v.cites.some((c: string) => gids.has(c)))
@@ -160,6 +161,13 @@ export async function narrative(f: CompanyFundamentals, facts: Facts, o: Researc
     // claims are kept so the UI can resolve claim cites too
     ...({ claims, calls: extracted.map(e => ({ call: e.call, date: e.date, n: e.guidance.length, dropped: (e as any).dropped || 0, error: (e as any).error })), risks } as any),
   }
+}
+
+/** Remove internal prompt labels (NUMBERS, GUIDANCE, CLAIMS…) and ids that models sometimes echo into prose. */
+export function scrub<T>(v: T): T {
+  const fix = (t: string) => t.replace(/\b(?:in|from|per|the)?\s*(NUMBERS|GUIDANCE|CLAIMS|ANALYST PUSHBACK|ANNUAL REPORT RISKS)\b/g, (m, w) => /^\s*(in|from|per)\s/i.test(m) ? '' : w === 'NUMBERS' ? ' the reported figures' : ' management’s statements').replace(/\s*\(?\b[cC]\d+[gn]\d+\b\)?/g, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').replace(/(^|[.!?]\s+)(management’s|the reported)/g, (_, a, b) => a + b[0].toUpperCase() + b.slice(1)).trim()
+  const walk = (x: any): any => typeof x === 'string' ? fix(x) : Array.isArray(x) ? x.map(walk) : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, y]) => [k, k === 'cites' || k === 'id' ? y : walk(y)])) : x
+  return walk(v)
 }
 
 /** Grounded Q&A: the dossier's extracts + the full text of the two latest transcripts (primary source), cited by page. */
@@ -193,6 +201,6 @@ export async function askDossier(d: Dossier, question: string, o: { ledger?: Led
   })
   const data = r.data || {}
   const sources = (data.sources || []).map((s: any) => ok.find(x => x.i === s.doc) ? { label: `${ok.find(x => x.i === s.doc)!.t.label}, p.${s.page}`, url: `${ok.find(x => x.i === s.doc)!.t.url}#page=${s.page}` } : null).filter(Boolean)
-  const answer = String(data.answer || '').replace(/\s*\((?:doc \d|facts|page \d)[^)]*\)/gi, '')
+  const answer = scrub(String(data.answer || '')).replace(/\s*\((?:doc \d|facts|page \d)[^)]*\)/gi, '')
   return { answer, confidence: data.confidence, sources }
 }

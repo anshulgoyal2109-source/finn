@@ -11,7 +11,7 @@ type Live = D & { prices?: { d: string; c: number }[] }
 const STATUS: Record<Verdict['status'], { label: string; glyph: string; cls: string }> = {
   delivered: { label: 'Delivered', glyph: '✓', cls: 'bg-up-wash text-up' },
   missed: { label: 'Missed', glyph: '✕', cls: 'bg-down-wash text-down' },
-  partly: { label: 'Partly', glyph: '◐', cls: 'bg-warn-wash text-warn' },
+  partly: { label: 'Partly', glyph: '≈', cls: 'bg-warn-wash text-warn' },
   revised: { label: 'Revised', glyph: '↺', cls: 'bg-signal-wash text-signal' },
   pending: { label: 'Pending', glyph: '…', cls: 'bg-wash text-ink-2' },
 }
@@ -53,7 +53,8 @@ export function Dossier({ ticker, initial, filings, prices, holding }: { ticker:
   if (err && !d) return <p className="mt-10 text-center text-[15px]">{err} <Link href="/research" className="text-signal">Search again</Link></p>
   if (!d) return <Loading text="Pulling reported financials" />
   const f = d.facts, n: any = d.narrative
-  const px = livePrices.map(p => p.c)
+  // drop weekend special sessions (e.g. Diwali muhurat) so 'day change' means the last full session
+  const px = livePrices.filter(p => ![0, 6].includes(new Date(p.d + 'T12:00:00Z').getUTCDay())).map(p => p.c)
   const dayChg = px.length > 1 ? ((px[px.length - 1] - px[px.length - 2]) / px[px.length - 2]) * 100 : null
   const yrChg = px.length > 240 ? ((px[px.length - 1] - px[px.length - 248 < 0 ? 0 : px.length - 248]) / px[Math.max(0, px.length - 248)]) * 100 : null
   const gIndex = new Map<string, any>([...(n?.guidance || []), ...(n?.claims || [])].map((g: any) => [g.id, g]))
