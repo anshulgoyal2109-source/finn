@@ -1,0 +1,14 @@
+{
+  "portfolio": [
+    "RELIANCE", "HDFCBANK", "TCS", "BAJFINANCE", "SUNPHARMA", "MARUTI",
+    "TITAN", "LT", "ETERNAL", "TRENT", "ADANIPORTS", "HAL",
+    "DIXON", "POLYCAB", "PERSISTENT", "CDSL", "KAYNES", "SUZLON"
+  ],
+  "research": ["ASIANPAINT", "INDIGO", "KPITTECH", "DMART"],
+  "alerts": {
+    "volumeMultiple": 2,
+    "priceMovePct": 4,
+    "categories": ["results", "mna", "management_change", "fund_raise", "litigation", "pledging", "credit_rating"]
+  },
+  "enrichBudgetPerRun": 30
+}

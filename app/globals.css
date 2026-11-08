@@ -1,0 +1,43 @@
+@import "tailwindcss";
+@import "@fontsource/schibsted-grotesk/400.css";
+@import "@fontsource/schibsted-grotesk/500.css";
+@import "@fontsource/schibsted-grotesk/600.css";
+@import "@fontsource/schibsted-grotesk/700.css";
+@import "@fontsource/schibsted-grotesk/800.css";
+
+@theme {
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --color-paper: #F7F8F6;
+  --color-sheet: #FFFFFF;
+  --color-ink: #1A2230;
+  --color-ink-2: #4A5466;
+  --color-mute: #7A8494;
+  --color-rule: #E2E5E8;
+  --color-wash: #EEF0F2;
+  --color-signal: #3048D8;
+  --color-signal-wash: #E8ECFC;
+  --color-up: #137A4B;
+  --color-up-wash: #E3F2EA;
+  --color-down: #B83A26;
+  --color-down-wash: #F8E6E2;
+  --color-warn: #9A6A00;
+  --color-warn-wash: #FBF1D9;
+}
+
+html { background: var(--color-paper); color: var(--color-ink); -webkit-tap-highlight-color: transparent; }
+body { font-family: var(--font-sans);  text-rendering: optimizeLegibility; }
+.num { font-variant-numeric: lining-nums; }
+:focus-visible { outline: 2px solid var(--color-signal); outline-offset: 2px; border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* the sieve: one tick per filing, height = how much it earned your attention */
+@keyframes sift { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.tick { transform-origin: bottom; animation: sift 700ms cubic-bezier(.2,.7,.2,1) both; }
+
+.sheet { background: var(--color-sheet); border: 1px solid var(--color-rule); }
+.hair { border-color: var(--color-rule); }
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+.scroll-x { overflow-x: auto; scrollbar-width: none; }
+.scroll-x::-webkit-scrollbar { display: none; }
+.safe-b { padding-bottom: max(env(safe-area-inset-bottom), 10px); }

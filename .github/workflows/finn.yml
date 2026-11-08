@@ -1,0 +1,38 @@
+name: FINN pipeline
+on:
+  schedule:
+    - cron: '17 3-15 * * 1-5'   # hourly 08:47–20:47 IST on weekdays: new filings
+    - cron: '47 12 * * 1-5'     # 18:17 IST: after-close EOD prices + refresh research dossiers
+  workflow_dispatch:
+    inputs:
+      backfill_days: { description: 'Days of BSE history to pull', default: '7' }
+      dossiers: { description: 'Rebuild research dossiers', type: boolean, default: false }
+concurrency: { group: finn-pipeline, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - uses: actions/cache@v4      # content-addressed LLM cache: re-runs never re-pay for a document
+        with: { path: .cache/llm, key: llm-${{ github.run_id }}, restore-keys: llm- }
+      - name: Push pipeline (prices, filings, triage, enrichment, phone alerts)
+        run: npx tsx scripts/pipeline.ts
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          FINN_APP_URL: ${{ vars.FINN_APP_URL }}
+          FINN_BACKFILL_DAYS: ${{ inputs.backfill_days || '7' }}
+      - name: Research dossiers (after close only)
+        if: github.event.schedule == '47 12 * * 1-5' || inputs.dossiers
+        run: npx tsx scripts/dossiers.ts
+        env: { GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}' }
+      - name: Commit data
+        run: |
+          git config user.name "finn-bot"; git config user.email "finn-bot@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "data: $(date -u +'%Y-%m-%d %H:%M') UTC" && git push
