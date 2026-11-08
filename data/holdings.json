@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-08T09:39:25.155Z",
+ "updatedAt": "2026-11-08T10:52:58.543Z",
  "holdings": [
   {
    "ticker": "RELIANCE",
@@ -131,7 +131,7 @@
    "ticker": "PERSISTENT",
    "name": "Persistent Systems",
    "sector": "IT - Software",
-   "size": "Large",
+   "size": "Mid",
    "screenerId": 2458,
    "warehouseId": 6597853,
    "bseCode": "533179"
