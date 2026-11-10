@@ -1,5 +1,44 @@
 [
  {
+  "at": "2026-11-10T07:32:25.730Z",
+  "filingsSeen": 129,
+  "newFilings": 3,
+  "ruleClassified": 2,
+  "llmClassified": 1,
+  "enriched": 2,
+  "ledger": [
+   {
+    "stage": "classify.batch",
+    "model": "gemini-3.5-flash-lite",
+    "calls": 1,
+    "inTok": 257,
+    "outTok": 59,
+    "cached": 0
+   },
+   {
+    "stage": "filing.oneliner",
+    "model": "gemini-3.5-flash-lite",
+    "calls": 1,
+    "inTok": 1045,
+    "outTok": 90,
+    "cached": 0
+   },
+   {
+    "stage": "results.extract",
+    "model": "gemini-3.5-flash-lite",
+    "calls": 1,
+    "inTok": 3554,
+    "outTok": 302,
+    "cached": 0
+   }
+  ],
+  "sources": {
+   "filings": "screener + bse (17/17 scrips)",
+   "prices": "screener EOD (NSE close, volume, delivery %)"
+  },
+  "usdEquivalent": 0.00067
+ },
+ {
   "at": "2026-11-10T06:11:15.034Z",
   "filingsSeen": 120,
   "newFilings": 0,
