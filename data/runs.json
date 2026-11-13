@@ -1,5 +1,19 @@
 [
  {
+  "at": "2026-11-13T13:32:47.739Z",
+  "filingsSeen": 109,
+  "newFilings": 1,
+  "ruleClassified": 1,
+  "llmClassified": 0,
+  "enriched": 0,
+  "ledger": [],
+  "sources": {
+   "filings": "screener + bse (15/17 scrips)",
+   "prices": "screener EOD (NSE close, volume, delivery %)"
+  },
+  "usdEquivalent": 0
+ },
+ {
   "at": "2026-11-13T12:11:36.510Z",
   "filingsSeen": 111,
   "newFilings": 1,
