@@ -1,6 +1,141 @@
 {
- "updatedAt": "2026-11-13T05:23:15.094Z",
- "holdings": [],
+ "updatedAt": "2026-11-13T07:39:56.755Z",
+ "holdings": [
+  {
+   "ticker": "RELIANCE",
+   "name": "Reliance Industries",
+   "sector": "Petroleum Products",
+   "size": "Large",
+   "screenerId": 2726,
+   "warehouseId": 6598251,
+   "bseCode": "500325"
+  },
+  {
+   "ticker": "HDFCBANK",
+   "name": "HDFC Bank",
+   "sector": "Banks",
+   "size": "Large",
+   "screenerId": 1298,
+   "warehouseId": 6596237,
+   "bseCode": "500180"
+  },
+  {
+   "ticker": "TCS",
+   "name": "Tata Consultancy Services",
+   "sector": "IT - Software",
+   "size": "Large",
+   "screenerId": 3365,
+   "warehouseId": 6599230,
+   "bseCode": "532540"
+  },
+  {
+   "ticker": "BAJFINANCE",
+   "name": "Bajaj Finance",
+   "sector": "Finance",
+   "size": "Large",
+   "screenerId": 372,
+   "warehouseId": 6594851,
+   "bseCode": "500034"
+  },
+  {
+   "ticker": "SUNPHARMA",
+   "name": "Sun Pharmaceutical Industries",
+   "sector": "Pharmaceuticals & Biotechnology",
+   "size": "Large",
+   "screenerId": 3245,
+   "warehouseId": 6599038,
+   "bseCode": "524715"
+  },
+  {
+   "ticker": "MARUTI",
+   "name": "Maruti Suzuki India",
+   "sector": "Automobiles",
+   "size": "Large",
+   "screenerId": 2023,
+   "warehouseId": 6597252,
+   "bseCode": "532500"
+  },
+  {
+   "ticker": "TITAN",
+   "name": "Titan Company",
+   "sector": "Consumer Durables",
+   "size": "Large",
+   "screenerId": 3437,
+   "warehouseId": 6599273,
+   "bseCode": "500114"
+  },
+  {
+   "ticker": "LT",
+   "name": "Larsen & Toubro",
+   "sector": "Construction",
+   "size": "Large",
+   "screenerId": 1870,
+   "warehouseId": 6597052,
+   "bseCode": "500510"
+  },
+  {
+   "ticker": "ETERNAL",
+   "name": "Eternal",
+   "sector": "Retailing",
+   "size": "Large",
+   "screenerId": 1274894,
+   "warehouseId": 68088707,
+   "bseCode": "543320"
+  },
+  {
+   "ticker": "TRENT",
+   "name": "Trent",
+   "sector": "Retailing",
+   "size": "Large",
+   "screenerId": 3467,
+   "warehouseId": 6599419,
+   "bseCode": "500251"
+  },
+  {
+   "ticker": "ADANIPORTS",
+   "name": "Adani Ports & Special Economic Zone",
+   "sector": "Transport Infrastructure",
+   "size": "Large",
+   "screenerId": 57,
+   "warehouseId": 6594426,
+   "bseCode": "532921"
+  },
+  {
+   "ticker": "PERSISTENT",
+   "name": "Persistent Systems",
+   "sector": "IT - Software",
+   "size": "Mid",
+   "screenerId": 2458,
+   "warehouseId": 6597853,
+   "bseCode": "533179"
+  },
+  {
+   "ticker": "CDSL",
+   "name": "Central Depository Services (India)",
+   "sector": "Capital Markets",
+   "size": "Mid",
+   "screenerId": 1274088,
+   "warehouseId": 15476674
+  },
+  {
+   "ticker": "KAYNES",
+   "name": "Kaynes Technology India",
+   "sector": "Industrial Manufacturing",
+   "size": "Small",
+   "screenerId": 1275358,
+   "warehouseId": 91778667,
+   "bseCode": "543664"
+  },
+  {
+   "ticker": "SUZLON",
+   "name": "Suzlon Energy",
+   "sector": "Electrical Equipment",
+   "size": "Mid",
+   "screenerId": 3305,
+   "warehouseId": 6599067,
+   "bseCode": "532667"
+  }
+ ],
  "research": [
   "ASIANPAINT",
   "INDIGO",
