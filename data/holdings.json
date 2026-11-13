@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-11-13T07:39:56.755Z",
+ "updatedAt": "2026-11-13T09:18:55.420Z",
  "holdings": [
   {
    "ticker": "RELIANCE",
@@ -99,6 +99,33 @@
    "screenerId": 57,
    "warehouseId": 6594426,
    "bseCode": "532921"
+  },
+  {
+   "ticker": "HAL",
+   "name": "Hindustan Aeronautics",
+   "sector": "Aerospace & Defense",
+   "size": "Large",
+   "screenerId": 1274307,
+   "warehouseId": 23511394,
+   "bseCode": "541154"
+  },
+  {
+   "ticker": "DIXON",
+   "name": "Dixon Technologies (India)",
+   "sector": "Consumer Durables",
+   "size": "Mid",
+   "screenerId": 1274137,
+   "warehouseId": 16835591,
+   "bseCode": "540699"
+  },
+  {
+   "ticker": "POLYCAB",
+   "name": "Polycab India",
+   "sector": "Industrial Products",
+   "size": "Large",
+   "screenerId": 1274653,
+   "warehouseId": 30744264,
+   "bseCode": "542652"
   },
   {
    "ticker": "PERSISTENT",
