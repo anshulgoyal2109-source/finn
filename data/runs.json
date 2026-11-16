@@ -1,5 +1,36 @@
 [
  {
+  "at": "2026-11-16T15:28:29.406Z",
+  "filingsSeen": 115,
+  "newFilings": 5,
+  "ruleClassified": 4,
+  "llmClassified": 1,
+  "enriched": 1,
+  "ledger": [
+   {
+    "stage": "classify.batch",
+    "model": "gemini-3.5-flash-lite",
+    "calls": 1,
+    "inTok": 242,
+    "outTok": 58,
+    "cached": 0
+   },
+   {
+    "stage": "filing.oneliner",
+    "model": "gemini-3.5-flash-lite",
+    "calls": 1,
+    "inTok": 1930,
+    "outTok": 95,
+    "cached": 0
+   }
+  ],
+  "sources": {
+   "filings": "screener + bse (17/17 scrips)",
+   "prices": "screener EOD (NSE close, volume, delivery %)"
+  },
+  "usdEquivalent": 0.00028
+ },
+ {
   "at": "2026-11-16T11:39:59.547Z",
   "filingsSeen": 112,
   "newFilings": 1,
@@ -999,20 +1030,6 @@
  },
  {
   "at": "2026-11-08T10:55:50.361Z",
-  "filingsSeen": 134,
-  "newFilings": 0,
-  "ruleClassified": 0,
-  "llmClassified": 0,
-  "enriched": 0,
-  "ledger": [],
-  "sources": {
-   "filings": "screener + bse (17/17 scrips)",
-   "prices": "screener EOD (NSE close, volume, delivery %)"
-  },
-  "usdEquivalent": 0
- },
- {
-  "at": "2026-11-08T10:52:58.544Z",
   "filingsSeen": 134,
   "newFilings": 0,
   "ruleClassified": 0,
