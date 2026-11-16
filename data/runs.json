@@ -1,5 +1,19 @@
 [
  {
+  "at": "2026-11-16T06:52:56.639Z",
+  "filingsSeen": 109,
+  "newFilings": 1,
+  "ruleClassified": 1,
+  "llmClassified": 0,
+  "enriched": 0,
+  "ledger": [],
+  "sources": {
+   "filings": "screener + bse (17/17 scrips)",
+   "prices": "screener EOD (NSE close, volume, delivery %)"
+  },
+  "usdEquivalent": 0
+ },
+ {
   "at": "2026-11-16T04:53:49.148Z",
   "filingsSeen": 109,
   "newFilings": 5,
@@ -1059,52 +1073,5 @@
    "prices": "screener EOD (NSE close, volume, delivery %)"
   },
   "usdEquivalent": 0.00645
- },
- {
-  "at": "2026-11-08T09:35:18.401Z",
-  "filingsSeen": 134,
-  "newFilings": 0,
-  "ruleClassified": 0,
-  "llmClassified": 0,
-  "enriched": 8,
-  "ledger": [
-   {
-    "stage": "people.extract",
-    "model": "gemini-flash-lite-latest",
-    "calls": 0,
-    "inTok": 0,
-    "outTok": 0,
-    "cached": 4
-   },
-   {
-    "stage": "results.extract",
-    "model": "gemini-flash-lite-latest",
-    "calls": 0,
-    "inTok": 0,
-    "outTok": 0,
-    "cached": 4
-   },
-   {
-    "stage": "people.profile",
-    "model": "gemini-3.5-flash-lite",
-    "calls": 2,
-    "inTok": 1855,
-    "outTok": 13,
-    "cached": 0
-   },
-   {
-    "stage": "people.background",
-    "model": "gemini-flash-latest",
-    "calls": 0,
-    "inTok": 0,
-    "outTok": 0,
-    "cached": 2
-   }
-  ],
-  "sources": {
-   "filings": "screener + bse (17/17 scrips)",
-   "prices": "screener EOD (NSE close, volume, delivery %)"
-  },
-  "usdEquivalent": 0.00019
  }
 ]
