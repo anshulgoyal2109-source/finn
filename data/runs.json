@@ -1,5 +1,19 @@
 [
  {
+  "at": "2026-11-25T09:36:25.873Z",
+  "filingsSeen": 106,
+  "newFilings": 1,
+  "ruleClassified": 1,
+  "llmClassified": 0,
+  "enriched": 0,
+  "ledger": [],
+  "sources": {
+   "filings": "screener + bse (17/17 scrips)",
+   "prices": "screener EOD (NSE close, volume, delivery %)"
+  },
+  "usdEquivalent": 0
+ },
+ {
   "at": "2026-11-25T07:52:13.574Z",
   "filingsSeen": 100,
   "newFilings": 2,
@@ -885,19 +899,5 @@
    "prices": "screener EOD (NSE close, volume, delivery %)"
   },
   "usdEquivalent": 0.00028
- },
- {
-  "at": "2026-11-16T11:39:59.547Z",
-  "filingsSeen": 112,
-  "newFilings": 1,
-  "ruleClassified": 1,
-  "llmClassified": 0,
-  "enriched": 0,
-  "ledger": [],
-  "sources": {
-   "filings": "screener + bse (17/17 scrips)",
-   "prices": "screener EOD (NSE close, volume, delivery %)"
-  },
-  "usdEquivalent": 0
  }
 ]
